@@ -1,5 +1,4 @@
-
-```
+# ReconShell - Advanced Port Scanner
 
    _____                          _____ _           _ _
   |  __ \                        / ____ | |        | | |
@@ -8,32 +7,11 @@
   | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
   |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
 
-                    ReconShell - Advanced Port Scanner
-
-Quick Start (print header + run scanner)
-
-```
-# On WSL / Linux
-./start.sh 64.233.170.101
-
-# On Windows PowerShell
-.\start.ps1 64.233.170.101
-```
-
-## Running with Scripts
-
-The `start.sh` (Linux/macOS) and `start.ps1` (Windows) scripts provide a convenient way to run the scanner with a header display. They pass all arguments directly to `reconshell.py`.
-
-Example:
-```bash
-# Linux - Combined TCP and UDP scan
-./start.sh example.com
-
-# Windows PowerShell - SYN scan
-.\start.ps1 example.com --syn
-```
-
-# ReconShell - Advanced Port Scanner
+       =[ ReconShell - Advanced Port Scanner ]
++ -- --=[ Advanced port scanning tool for penetration testing ]
++ -- --=[ Supports TCP, UDP, SYN scans with service detection ]
++ -- --=[ Use --help for options and usage information ]
++ -- --=[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
 
 A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners that can run simultaneously for faster results.
 
@@ -44,11 +22,14 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 - **UDP scanner** (best-effort — UDP is noisy and ambiguous)
 - **Parallel scanning** - Run multiple scan types simultaneously for faster results
 - **Advanced service version detection** - Parses banners to extract detailed version information including software name, version numbers, and release years for all common protocols (SMTP, HTTP, FTP, SSH, Telnet, MySQL, PostgreSQL, RDP, VNC, SMB, SNMP, NTP, DNS, and more)
-- **Real-time progress bars** - Visual progress indication during scanning
+- **Real-time custom progress bars** - Visual progress indication with filled bar style
 - **Concurrent execution** - High-performance scanning with configurable concurrency
-- CIDR target expansion
-- Host discovery
-- Timing profiles
+- **Advanced target information** - Detailed IP, hostname, status, and latency display
+- **Automatic server detection** - Identifies known servers (e.g., Google Web Server) and provides contextual details
+- **CIDR target expansion**
+- **Host discovery**
+- **Timing profiles**
+- **Legal disclaimer** - Promotes responsible and authorized use
 
 ## Installation
 
@@ -138,6 +119,29 @@ python3 reconshell.py 192.168.1.10 --details
 - SYN scanning and raw packet sending require root.
 - Aggressive scans can trigger intrusion detection or block your IP.
 - Only scan hosts/networks you own or have explicit permission to test.
+- The tool includes a legal disclaimer to promote authorized use only.
+
+## Example Output
+
+```
+Target Information:
+  IP Address: 142.250.4.106
+  Hostname: sa-in-f105.1e100.net
+  Host Status: Unknown
+  Latency: N/A
+
+Scan Results for www.google.com:
+Port     Protocol   State        Service         Version Info
+----------------------------------------------------------------------
+80       tcp        OPEN         http            gws (Google Web Server)
+443      tcp        OPEN         https           gws (Google Web Server)
+
+Total Open Ports: 2
+Scan Time: 7.12 seconds
+
+Detected Servers:
+  Google Web Server (GWS): Google's proprietary web server software used for their services like Google Search, Gmail, etc. It does not expose version details publicly for security reasons.
+```
 
 ## Roadmap
 
