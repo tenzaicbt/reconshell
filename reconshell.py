@@ -269,6 +269,26 @@ def main():
 
     all_results = tcp_results + syn_results + udp_results
 
+    # Deduplicate results by (port, protocol)
+    merged_results = {}
+    for r in all_results:
+        key = (r['port'], r.get('protocol', 'tcp'))
+        if key not in merged_results:
+            merged_results[key] = r.copy()
+        else:
+            existing = merged_results[key]
+            # Prefer open status
+            if r.get('status') == 'open' and existing.get('status') != 'open':
+                existing['status'] = 'open'
+            # Merge version if available
+            if r.get('version') and not existing.get('version'):
+                existing['version'] = r['version']
+            # Merge service if available
+            if r.get('service') and not existing.get('service'):
+                existing['service'] = r['service']
+
+    all_results = list(merged_results.values())
+
     add_versions(all_results, args)
     scan_time = time.time() - start_time
     output_results(all_results, args, os_info, ip_details, target_info, host_status, latency, scan_time)
