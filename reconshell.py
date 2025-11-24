@@ -84,7 +84,7 @@ def get_ip_details(ip):
 def run_tcp_scan(args):
     ports = parse_ports(args.ports)
     try:
-        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, False, progress=False))
+        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, False, progress=True))
     except KeyboardInterrupt:
         print("Interrupted")
         return []
@@ -92,7 +92,7 @@ def run_tcp_scan(args):
 
 def run_syn_scan(args):
     ports = parse_ports(args.ports)
-    open_ports, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=False)
+    open_ports, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True)
     results = [{'port': p, 'status': 'open', 'protocol': 'tcp', 'method': 'syn'} for p in open_ports]
     return results, os_info
 
@@ -101,7 +101,7 @@ def run_udp_scan(args):
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {executor.submit(udp_probe, args.target, port, args.timeout): port for port in ports}
-        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=True) as pbar:
+        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=False, colour='yellow', bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
             for future in concurrent.futures.as_completed(futures):
                 port = futures[future]
                 try:

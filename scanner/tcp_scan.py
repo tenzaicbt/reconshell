@@ -40,7 +40,7 @@ async def probe_port(semaphore, host, port, timeout, banner):
 
 async def scan_host(host, ports, concurrency, timeout, banner, progress=False):
     sem = asyncio.Semaphore(concurrency)
-    pbar = tqdm.tqdm(total=len(ports), desc="TCP Scan", disable=not progress)
+    pbar = tqdm.tqdm(total=len(ports), desc="TCP Scan", disable=not progress, colour='green', bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
 
     async def probe_and_update(port):
         result = await probe_port(sem, host, port, timeout, banner)

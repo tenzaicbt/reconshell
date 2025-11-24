@@ -34,7 +34,7 @@ def detect_os(resp):
 def scan_syn(target, ports, timeout=1, progress=False):
     open_ports = []
     os_info = "Unknown"
-    with tqdm.tqdm(total=len(ports), desc="SYN Scan", disable=not progress) as pbar:
+    with tqdm.tqdm(total=len(ports), desc="SYN Scan", disable=not progress, colour='red', bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
         for p in ports:
             pkt = IP(dst=target)/TCP(sport=RandShort(), dport=p, flags='S')
             resp = sr1(pkt, timeout=timeout)
