@@ -10,6 +10,7 @@ import socket
 import time
 from typing import List, Dict, Tuple
 from scapy.all import IP, TCP, sr1, RandShort, conf, send
+from .progress import ProgressBar
 
 try:
     from .banner import grab_version_tcp  # type: ignore
@@ -18,22 +19,7 @@ except ImportError:  # pragma: no cover - direct script execution fallback
 
 conf.verb = 0  # scapy quiet
 
-class ProgressBar:
-    def __init__(self, total, desc=""):
-        self.total = total
-        self.desc = desc
-        self.current = 0
-
-    def update(self, n=1):
-        self.current += n
-        percent = int(100 * self.current / self.total)
-        bar_length = 40
-        filled = int(bar_length * self.current / self.total)
-        bar = '█' * filled + '░' * (bar_length - filled)
-        print(f"\r{self.desc}: [{bar}] {percent}%", end='', flush=True)
-
-    def close(self):
-        print()
+# use shared ProgressBar from scanner.progress
 
 def get_service_name(port: int) -> str:
     try:
@@ -66,7 +52,7 @@ def scan_syn(target: str, ports: List[int], timeout: float = 1.0, progress: bool
     os_info = "Unknown"
 
     if progress:
-        pbar = ProgressBar(total=len(ports), desc="SYN Scan")
+        pbar = ProgressBar(total=len(ports), desc="SYN", width=10, protocol='syn')
     else:
         pbar = None
 
@@ -116,7 +102,7 @@ def scan_syn(target: str, ports: List[int], timeout: float = 1.0, progress: bool
 
     if version_probe and results:
         if progress:
-            vbar = ProgressBar(total=len(results), desc="Service Fingerprint")
+            vbar = ProgressBar(total=len(results), desc="Fingerprint", width=10, protocol='tcp')
         else:
             vbar = None
         for entry in results:

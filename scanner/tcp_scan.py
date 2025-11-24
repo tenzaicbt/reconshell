@@ -8,23 +8,7 @@ Usage:
 import argparse
 import asyncio
 import socket
-
-class ProgressBar:
-    def __init__(self, total, desc=""):
-        self.total = total
-        self.desc = desc
-        self.current = 0
-
-    def update(self, n=1):
-        self.current += n
-        percent = int(100 * self.current / self.total)
-        bar_length = 40
-        filled = int(bar_length * self.current / self.total)
-        bar = '█' * filled + '░' * (bar_length - filled)
-        print(f"\r{self.desc}: [{bar}] {percent}%", end='', flush=True)
-
-    def close(self):
-        print()
+from .progress import ProgressBar
 
 async def probe_port(semaphore, host, port, timeout, banner):
     async with semaphore:
@@ -57,7 +41,7 @@ async def probe_port(semaphore, host, port, timeout, banner):
 async def scan_host(host, ports, concurrency, timeout, banner, progress=False):
     sem = asyncio.Semaphore(concurrency)
     if progress:
-        pbar = ProgressBar(total=len(ports), desc="TCP Scan")
+        pbar = ProgressBar(total=len(ports), desc="TCP", width=10, protocol='tcp')
     else:
         pbar = None
 

@@ -14,6 +14,8 @@ import subprocess
 import concurrent.futures
 import argparse
 import os
+import contextlib
+import gc
 
 # ANSI color codes
 RED = '\033[91m'
@@ -25,6 +27,10 @@ ENDC = '\033[0m'
 
 # Add scanner to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scanner'))
+import logging
+# Reduce scapy/logging noise (hide non-fatal warnings)
+logging.getLogger('scapy.runtime').setLevel(logging.ERROR)
+logging.getLogger('scapy').setLevel(logging.ERROR)
 
 from scanner.parser import get_parser
 from scanner.utils import parse_ports
@@ -32,25 +38,9 @@ from scanner.tcp_scan import scan_host as tcp_scan
 from scanner.syn_scan import scan_syn
 from scanner.udp_scan import udp_probe
 from scanner.banner import grab_version_tcp, grab_version_udp
+from scanner.progress import ProgressBar
 import asyncio
 import requests
-
-class ProgressBar:
-    def __init__(self, total, desc=""):
-        self.total = total
-        self.desc = desc
-        self.current = 0
-
-    def update(self, n=1):
-        self.current += n
-        percent = int(100 * self.current / self.total)
-        bar_length = 40
-        filled = int(bar_length * self.current / self.total)
-        bar = '█' * filled + '░' * (bar_length - filled)
-        print(f"\r{self.desc}: [{bar}] {percent}%", end='', flush=True)
-
-    def close(self):
-        print()
 
 class ReconArgumentParser(argparse.ArgumentParser):
     """Custom parser that prints colorful error messages."""
@@ -120,7 +110,35 @@ def run_tcp_scan(args):
 
 def run_syn_scan(args):
     ports = parse_ports(args.ports)
-    syn_results, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True, version_probe=False)
+    # Run the SYN scan while suppressing noisy scapy stderr/stdout output
+    syn_results = []
+    os_info = "Unknown"
+    had_perm_error = False
+    had_other_error = False
+    err_msg = None
+    with open(os.devnull, 'w') as devnull:
+        with contextlib.redirect_stderr(devnull), contextlib.redirect_stdout(devnull):
+            try:
+                syn_results, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True, version_probe=False)
+            except (PermissionError, OSError) as e:
+                had_perm_error = True
+                err_msg = str(e)
+            except Exception as e:
+                had_other_error = True
+                err_msg = str(e)
+            finally:
+                # force cleanup while stderr still redirected to avoid finalizer tracebacks
+                try:
+                    gc.collect()
+                except Exception:
+                    pass
+
+    if had_perm_error:
+        print(f"\n{YELLOW}WARNING:{ENDC} SYN scan requires elevated privileges or a packet capture driver (e.g. Npcap) on this platform. Skipping SYN scan.")
+        return [], "Unknown"
+    if had_other_error:
+        print(f"\n{YELLOW}WARNING:{ENDC} SYN scan failed: {err_msg}. Skipping SYN scan.")
+        return [], "Unknown"
     results = []
     for entry in syn_results:
         port = entry.get('port')
@@ -144,7 +162,7 @@ def run_udp_scan(args):
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {executor.submit(udp_probe, args.target, port, args.timeout): port for port in ports}
-        pbar = ProgressBar(total=len(ports), desc="UDP Scan")
+        pbar = ProgressBar(total=len(ports), desc="UDP", width=10, protocol='udp')
         for future in concurrent.futures.as_completed(futures):
             port = futures[future]
             try:
