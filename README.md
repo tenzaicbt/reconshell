@@ -1,12 +1,13 @@
 
 
-                    _____                          _____ _           _ _ 
-  |  __ \                        / ____ | |         | | |
-  | |__) |___  ___ ___  _ __    | (___  | |__   ___ | | |
-   |  _  // _ \/ __/ _ \| '_  \   \ ___ \| '_ \ / _ \ | |
-   | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
-   |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
-                      ReconShell - Advanced Port Scanner
+   _____                          _____ _          _ _
+  |  __ \                        / ____| |        | | |
+  | |__) |___  ___ ___  _ __ ___ | (___ | |__   ___| | |
+  |  _  // _ \/ __/ _ \| '_ ` _ \ \___ \| '_ \ / _ \ | |
+  | | \ \  __/ (_| (_) | | | | | |____) | | | |  __/ | |
+  |_|  \_\___|\___\___/|_| |_| |_|_____/|_| |_|\___|_|_|
+
+                    ReconShell - Advanced Port Scanner
 
 Quick Start (print header + run scanner)
 
@@ -41,7 +42,9 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 - **SYN scanner** (fast, stealthier, requires root and `scapy`)
 - **UDP scanner** (best-effort — UDP is noisy and ambiguous)
 - **Parallel scanning** - Run multiple scan types simultaneously for faster results
-- Service version detection
+- **Service version detection** - Automatically identifies service versions for common protocols
+- **Real-time progress bars** - Visual progress indication during scanning
+- **Concurrent execution** - High-performance scanning with configurable concurrency
 - CIDR target expansion
 - Host discovery
 - Timing profiles
@@ -92,7 +95,7 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 
 ## Usage
 
-ReconShell automatically scans both TCP and UDP ports simultaneously. You can optionally enable SYN scanning for faster TCP results (requires root).
+ReconShell automatically scans both TCP and UDP ports simultaneously with real-time progress bars. You can optionally enable SYN scanning for faster TCP results (requires root).
 
 ### Basic Scan (TCP + UDP by default, ports 1-1000)
 ```bash
@@ -134,8 +137,6 @@ python reconshell.py 192.168.1.10 --details
 
 - Port ranges and host ranges (CIDR scanning)
 - Parallelism & rate-limiting
-- Banner grabbing / service probes
-- Version detection
 - OS fingerprinting
 - Output formats (JSON, CSV)
 - Raw packet capture
