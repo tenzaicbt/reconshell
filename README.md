@@ -25,22 +25,23 @@ The `start.sh` (Linux/macOS) and `start.ps1` (Windows) scripts provide a conveni
 
 Example:
 ```bash
-# Linux
-./start.sh --tcp -t example.com -p 80,443 --banner
+# Linux - Combined TCP and UDP scan
+./start.sh --tcp --udp -t example.com -p 80,443,53 --banner --progress
 
-# Windows PowerShell
+# Windows PowerShell - SYN scan
 .\start.ps1 --syn -t example.com -p 1-1000 -T 0.5
 ```
 
 # ReconShell - Advanced Port Scanner
 
-A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners.
+A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners that can run simultaneously for faster results.
 
 ## Features
 
 - **TCP Connect scanner** (cross-platform, doesn't need root; reliable)
 - **SYN scanner** (fast, stealthier, requires root and `scapy`)
 - **UDP scanner** (best-effort — UDP is noisy and ambiguous)
+- **Parallel scanning** - Run multiple scan types simultaneously for faster results
 - Optional banner grabbing
 - JSON output support
 - CIDR target expansion
@@ -93,6 +94,13 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 
 ## Usage
 
+By default, ReconShell runs both TCP and UDP scans simultaneously if no scan type is specified. You can combine multiple scan types (--tcp, --syn, --udp) to run them in parallel for faster comprehensive scanning.
+
+### Basic Scan (TCP + UDP by default)
+```bash
+python3 reconshell.py -t 192.168.1.10 -p 1-1000 --progress
+```
+
 ### TCP Connect Scan (no root needed)
 ```bash
 python3 reconshell.py --tcp -t 192.168.1.10 -p 1-1000 --banner -c 300
@@ -108,7 +116,7 @@ sudo python3 reconshell.py --syn -t 192.168.1.10 -p 1-1000 -T 0.5
 python3 reconshell.py --udp -t 192.168.1.10 -p 53,161,123
 ```
 
-### Combined Scan with JSON Output
+### Combined Parallel Scan with JSON Output
 ```bash
 python3 reconshell.py --tcp --syn --udp -t 192.168.1.10 -p 1-1000 --json -o results.json
 ```
@@ -117,14 +125,16 @@ python3 reconshell.py --tcp --syn --udp -t 192.168.1.10 -p 1-1000 --json -o resu
 
 - `-t, --target`: Target IP or hostname
 - `-p, --ports`: Ports (e.g., 22,80,443,1000-2000)
-- `--tcp`: Enable TCP connect scan
-- `--syn`: Enable SYN scan (requires root)
-- `--udp`: Enable UDP scan
+- `--tcp`: Enable TCP connect scan (can be combined with others for parallel scanning)
+- `--syn`: Enable SYN scan (requires root; can be combined with others)
+- `--udp`: Enable UDP scan (can be combined with others)
 - `--banner`: Attempt banner grabbing
 - `-c, --concurrency`: Concurrent tasks (default: 200)
 - `-T, --timeout`: Timeout in seconds (default: 1.0)
 - `--json`: Output in JSON format
 - `-o, --output`: Output file
+- `--progress`: Show progress bar during scanning
+- `--details`: Show detailed IP information
 
 ## Security Notes
 

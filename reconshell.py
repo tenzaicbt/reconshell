@@ -9,6 +9,7 @@ import os
 import time
 import socket
 import subprocess
+import concurrent.futures
 
 # ANSI color codes
 RED = '\033[91m'
@@ -196,15 +197,30 @@ ____                  ____  _          _ _
     os_info = "Unknown"
     ip_details = get_ip_details(args.target) if args.details else {}
 
-    if args.tcp:
-        all_results.extend(run_tcp_scan(args))
+    # Run scans in parallel
+    tcp_results = []
+    syn_results = []
+    udp_results = []
 
-    if args.syn:
-        syn_results, os_info = run_syn_scan(args)
-        all_results.extend(syn_results)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {}
+        if args.tcp:
+            futures[executor.submit(run_tcp_scan, args)] = 'tcp'
+        if args.syn:
+            futures[executor.submit(run_syn_scan, args)] = 'syn'
+        if args.udp:
+            futures[executor.submit(run_udp_scan, args)] = 'udp'
 
-    if args.udp:
-        all_results.extend(run_udp_scan(args))
+        for future in concurrent.futures.as_completed(futures):
+            scan_type = futures[future]
+            if scan_type == 'tcp':
+                tcp_results = future.result()
+            elif scan_type == 'syn':
+                syn_results, os_info = future.result()
+            elif scan_type == 'udp':
+                udp_results = future.result()
+
+    all_results = tcp_results + syn_results + udp_results
 
     add_banners(all_results, args)
     scan_time = time.time() - start_time
