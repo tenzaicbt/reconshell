@@ -15,7 +15,7 @@ async def probe_port(semaphore, host, port, timeout, banner):
         try:
             reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port, limit=2**16), timeout=timeout)
             # connected -> port open
-            info = {'port': port, 'status': 'open', 'banner': None}
+            info = {'port': port, 'status': 'open', 'protocol': 'tcp', 'banner': None}
             if banner:
                 try:
                     writer.write(b"\r\n")
@@ -32,11 +32,11 @@ async def probe_port(semaphore, host, port, timeout, banner):
                 pass
             return info
         except (ConnectionRefusedError, OSError):
-            return {'port': port, 'status': 'closed'}
+            return {'port': port, 'status': 'closed', 'protocol': 'tcp'}
         except asyncio.TimeoutError:
-            return {'port': port, 'status': 'filtered'}
+            return {'port': port, 'status': 'filtered', 'protocol': 'tcp'}
         except Exception as e:
-            return {'port': port, 'status': f'err:{e}'}
+            return {'port': port, 'status': f'err:{e}', 'protocol': 'tcp'}
 
 async def scan_host(host, ports, concurrency, timeout, banner, progress=False):
     sem = asyncio.Semaphore(concurrency)

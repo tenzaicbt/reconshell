@@ -26,7 +26,7 @@ from scanner.utils import parse_ports
 from scanner.tcp_scan import scan_host as tcp_scan
 from scanner.syn_scan import scan_syn
 from scanner.udp_scan import udp_probe
-from scanner.banner import grab_banner_tcp, grab_banner_udp
+from scanner.banner import grab_version_tcp, grab_version_udp
 import asyncio
 import tqdm
 import requests
@@ -82,7 +82,7 @@ def get_ip_details(ip):
 def run_tcp_scan(args):
     ports = parse_ports(args.ports)
     try:
-        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, args.banner, progress=args.progress))
+        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, False, progress=args.progress))
     except KeyboardInterrupt:
         print("Interrupted")
         return []
@@ -112,15 +112,13 @@ def run_udp_scan(args):
                 pbar.update(1)
     return results
 
-def add_banners(results, args):
-    if not args.banner:
-        return
+def add_versions(results, args):
     for r in results:
         if r.get('status') == 'open':
             if r.get('protocol') == 'tcp':
-                r['banner'] = grab_banner_tcp(args.target, r['port'], args.timeout)
+                r['version'] = grab_version_tcp(args.target, r['port'], args.timeout)
             elif r.get('protocol') == 'udp':
-                r['banner'] = grab_banner_udp(args.target, r['port'], args.timeout)
+                r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
     def color_state(state):
@@ -139,13 +137,13 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
     output = f"{CYAN}Target Info:{ENDC} IP: {target_info.get('ip', 'N/A')}, Hostname: {target_info.get('hostname', 'N/A')}\n"
     output += f"{CYAN}Host Status:{ENDC} {host_status.title()}, Latency: {latency}\n\n"
     output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
-    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Banner'}\n"
+    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Version'}\n"
     output += "-" * 70 + "\n"
     for r in sorted(filtered_results, key=lambda x: x['port']):
         service = get_service_name(r['port'], r.get('protocol', 'tcp'))
         state_colored = color_state(r['status'])
-        banner = r.get('banner', '') if r.get('banner') else ''
-        output += f"{r['port']:<8} {r.get('protocol', 'tcp'):<10} {state_colored:<12} {service:<15} {banner}\n"
+        version = r.get('version', '') if r.get('version') else ''
+        output += f"{r['port']:<8} {r.get('protocol', 'tcp'):<10} {state_colored:<12} {service:<15} {version}\n"
     open_count = len([r for r in filtered_results if r.get('status') == 'open'])
     output += f"\n{CYAN}Total Open Ports:{ENDC} {open_count}\n"
     output += f"{CYAN}Scan Time:{ENDC} {scan_time:.2f} seconds\n"
@@ -210,7 +208,7 @@ ____                  ____  _          _ _
 
     all_results = tcp_results + syn_results + udp_results
 
-    add_banners(all_results, args)
+    add_versions(all_results, args)
     scan_time = time.time() - start_time
     output_results(all_results, args, os_info, ip_details, target_info, host_status, latency, scan_time)
 

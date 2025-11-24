@@ -13,10 +13,10 @@ Quick Start (print header + run scanner)
 
 ```
 # On WSL / Linux
-./start.sh -t 64.233.170.101 -p 1-100 --progress
+./start.sh 64.233.170.101
 
 # On Windows PowerShell
-.\\\start.ps1 -t 64.233.170.101 -p 1-100 --progress
+.\start.ps1 64.233.170.101
 ```
 
 ## Running with Scripts
@@ -26,10 +26,10 @@ The `start.sh` (Linux/macOS) and `start.ps1` (Windows) scripts provide a conveni
 Example:
 ```bash
 # Linux - Combined TCP and UDP scan
-./start.sh --banner --progress -t example.com -p 80,443,53
+./start.sh example.com --progress
 
 # Windows PowerShell - SYN scan
-.\start.ps1 --syn -t example.com -p 1-1000 -T 0.5
+.\start.ps1 example.com --syn
 ```
 
 # ReconShell - Advanced Port Scanner
@@ -42,7 +42,7 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 - **SYN scanner** (fast, stealthier, requires root and `scapy`)
 - **UDP scanner** (best-effort — UDP is noisy and ambiguous)
 - **Parallel scanning** - Run multiple scan types simultaneously for faster results
-- Optional banner grabbing
+- Service version detection
 - CIDR target expansion
 - Host discovery
 - Timing profiles
@@ -95,27 +95,31 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 
 ReconShell automatically scans both TCP and UDP ports simultaneously. You can optionally enable SYN scanning for faster TCP results (requires root).
 
-### Basic Scan (TCP + UDP by default)
+### Basic Scan (TCP + UDP by default, ports 1-1000)
 ```bash
-python3 reconshell.py -t 192.168.1.10 -p 1-1000 --progress
+python reconshell.py 192.168.1.10
+```
+
+### Custom Ports
+```bash
+python reconshell.py 192.168.1.10 -p 22,80,443
 ```
 
 ### SYN Scan (requires root, adds to TCP/UDP)
 ```bash
-sudo python3 reconshell.py --syn -t 192.168.1.10 -p 1-1000 -T 0.5
+sudo python reconshell.py 192.168.1.10 --syn
 ```
 
-### With Banner Grabbing
+### With Banner Grabbing and Progress
 ```bash
-python3 reconshell.py --banner -t 192.168.1.10 -p 1-1000 --progress
+python reconshell.py 192.168.1.10 --progress
 ```
 
 ## Options
 
-- `-t, --target`: Target IP or hostname
+- `target`: Target IP or hostname (positional argument)
 - `-p, --ports`: Ports (e.g., 22,80,443,1000-2000)
 - `--syn`: Enable SYN scan (requires root; adds to default TCP/UDP)
-- `--banner`: Attempt banner grabbing
 - `-c, --concurrency`: Concurrent tasks (default: 200)
 - `-T, --timeout`: Timeout in seconds (default: 0.2)
 - `-o, --output`: Output file
