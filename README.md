@@ -43,7 +43,7 @@ A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can r
 - **SYN scanner** (fast, stealthier, requires root and `scapy`)
 - **UDP scanner** (best-effort — UDP is noisy and ambiguous)
 - **Parallel scanning** - Run multiple scan types simultaneously for faster results
-- **Service version detection** - Automatically identifies service versions for common protocols
+- **Advanced service version detection** - Parses banners to extract detailed version information including software name, version numbers, and release years for all common protocols (SMTP, HTTP, FTP, SSH, Telnet, MySQL, PostgreSQL, RDP, VNC, SMB, SNMP, NTP, DNS, and more)
 - **Real-time progress bars** - Visual progress indication during scanning
 - **Concurrent execution** - High-performance scanning with configurable concurrency
 - CIDR target expansion

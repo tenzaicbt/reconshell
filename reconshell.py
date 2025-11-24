@@ -137,7 +137,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
     output = f"{CYAN}Target Info:{ENDC} IP: {target_info.get('ip', 'N/A')}, Hostname: {target_info.get('hostname', 'N/A')}\n"
     output += f"{CYAN}Host Status:{ENDC} {host_status.title()}, Latency: {latency}\n\n"
     output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
-    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Version'}\n"
+    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Version Info'}\n"
     output += "-" * 70 + "\n"
     for r in sorted(filtered_results, key=lambda x: x['port']):
         service = get_service_name(r['port'], r.get('protocol', 'tcp'))
