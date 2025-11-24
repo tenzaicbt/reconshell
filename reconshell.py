@@ -9,8 +9,11 @@ import sys
 import os
 import time
 import socket
+import sys
 import subprocess
 import concurrent.futures
+import argparse
+import os
 
 # ANSI color codes
 RED = '\033[91m'
@@ -30,8 +33,33 @@ from scanner.syn_scan import scan_syn
 from scanner.udp_scan import udp_probe
 from scanner.banner import grab_version_tcp, grab_version_udp
 import asyncio
-import tqdm
 import requests
+
+class ProgressBar:
+    def __init__(self, total, desc=""):
+        self.total = total
+        self.desc = desc
+        self.current = 0
+
+    def update(self, n=1):
+        self.current += n
+        percent = int(100 * self.current / self.total)
+        bar_length = 40
+        filled = int(bar_length * self.current / self.total)
+        bar = '█' * filled + '░' * (bar_length - filled)
+        print(f"\r{self.desc}: [{bar}] {percent}%", end='', flush=True)
+
+    def close(self):
+        print()
+
+class ReconArgumentParser(argparse.ArgumentParser):
+    """Custom parser that prints colorful error messages."""
+
+    def error(self, message):  # pragma: no cover - CLI UX hook
+        sys.stderr.write(f"\n{RED}Argument Error:{ENDC} {message}\n\n")
+        self.print_help(sys.stderr)
+        sys.stderr.write('\n')
+        raise SystemExit(2)
 
 def get_target_info(target):
     try:
@@ -92,8 +120,23 @@ def run_tcp_scan(args):
 
 def run_syn_scan(args):
     ports = parse_ports(args.ports)
-    open_ports, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True)
-    results = [{'port': p, 'status': 'open', 'protocol': 'tcp', 'method': 'syn'} for p in open_ports]
+    syn_results, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True, version_probe=False)
+    results = []
+    for entry in syn_results:
+        port = entry.get('port')
+        if port is None:
+            continue
+        record = {
+            'port': port,
+            'status': entry.get('state', 'open'),
+            'protocol': 'tcp',
+            'method': 'syn'
+        }
+        if entry.get('service'):
+            record['service'] = entry['service']
+        if entry.get('version'):
+            record['version'] = entry['version']
+        results.append(record)
     return results, os_info
 
 def run_udp_scan(args):
@@ -101,17 +144,18 @@ def run_udp_scan(args):
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {executor.submit(udp_probe, args.target, port, args.timeout): port for port in ports}
-        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=False, colour='yellow', bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]') as pbar:
-            for future in concurrent.futures.as_completed(futures):
-                port = futures[future]
-                try:
-                    status, banner = future.result()
-                    result = {'port': port, 'status': status, 'protocol': 'udp', 'banner': banner}
-                    results.append(result)
-                except Exception as e:
-                    result = {'port': port, 'status': f'err:{e}', 'protocol': 'udp', 'banner': None}
-                    results.append(result)
-                pbar.update(1)
+        pbar = ProgressBar(total=len(ports), desc="UDP Scan")
+        for future in concurrent.futures.as_completed(futures):
+            port = futures[future]
+            try:
+                status, banner = future.result()
+                result = {'port': port, 'status': status, 'protocol': 'udp', 'banner': banner}
+                results.append(result)
+            except Exception as e:
+                result = {'port': port, 'status': f'err:{e}', 'protocol': 'udp', 'banner': None}
+                results.append(result)
+            pbar.update(1)
+        pbar.close()
     return results
 
 def add_versions(results, args):
@@ -155,10 +199,23 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         for k, v in ip_details.items():
             output += f"  {k}: {v}\n"
 
+    # Check for known servers
+    detected_servers = set()
+    for r in results:
+        version = (r.get('version') or '').lower()
+        if 'gws' in version:
+            detected_servers.add('Google Web Server (GWS)')
+
+    if detected_servers:
+        output += f"\n{CYAN}Detected Servers:{ENDC}\n"
+        for server in detected_servers:
+            if 'Google Web Server' in server:
+                output += f"  {server}: Google's proprietary web server software used for their services like Google Search, Gmail, etc. It does not expose version details publicly for security reasons.\n"
+
     print(output)
 
 def main():
-    banner = r"""
+    old_banner = r"""
    _____                          _____ _           _ _
   |  __ \                        / ____ | |        | | |
   | |__) |___  ___ ___  _ __    | (___  | |__   ___| | |
@@ -166,13 +223,21 @@ def main():
   | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
   |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
 
-                    ReconShell - Advanced Port Scanner
+                
 """
-    lines = [line.rstrip() for line in banner.split('\n') if line.strip()]
+    lines = [line.rstrip() for line in old_banner.split('\n') if line.strip()]
     max_len = max(len(line) for line in lines)
     centered_banner = '\n'.join(line.center(max_len) for line in lines)
-    print(centered_banner)
-    parser = get_parser()
+    print(RED + centered_banner + ENDC)
+    
+    banner = r"""
+       =[ ReconShell - Advanced Port Scanner ]
++ -- --=[ Advanced port scanning tool for penetration testing ]
++ -- --=[ Supports TCP, UDP, SYN scans with service detection ]
++ -- --=[ Use --help for options and usage information ]
+"""
+    print(banner)
+    parser = get_parser(parser_cls=ReconArgumentParser)
     args = parser.parse_args()
 
     # Handle --common option

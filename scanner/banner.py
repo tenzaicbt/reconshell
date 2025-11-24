@@ -236,6 +236,10 @@ def parse_http_server(server_header):
     if not server_header:
         return "HTTP"
     
+    # Special case for Google Web Server
+    if server_header.lower() == 'gws':
+        return "gws (Google Web Server)"
+    
     # Common patterns
     patterns = [
         r'Apache/([\d.]+)',

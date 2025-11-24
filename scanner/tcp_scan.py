@@ -8,7 +8,23 @@ Usage:
 import argparse
 import asyncio
 import socket
-import tqdm
+
+class ProgressBar:
+    def __init__(self, total, desc=""):
+        self.total = total
+        self.desc = desc
+        self.current = 0
+
+    def update(self, n=1):
+        self.current += n
+        percent = int(100 * self.current / self.total)
+        bar_length = 40
+        filled = int(bar_length * self.current / self.total)
+        bar = '█' * filled + '░' * (bar_length - filled)
+        print(f"\r{self.desc}: [{bar}] {percent}%", end='', flush=True)
+
+    def close(self):
+        print()
 
 async def probe_port(semaphore, host, port, timeout, banner):
     async with semaphore:
@@ -40,16 +56,21 @@ async def probe_port(semaphore, host, port, timeout, banner):
 
 async def scan_host(host, ports, concurrency, timeout, banner, progress=False):
     sem = asyncio.Semaphore(concurrency)
-    pbar = tqdm.tqdm(total=len(ports), desc="TCP Scan", disable=not progress, colour='green', bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]')
+    if progress:
+        pbar = ProgressBar(total=len(ports), desc="TCP Scan")
+    else:
+        pbar = None
 
     async def probe_and_update(port):
         result = await probe_port(sem, host, port, timeout, banner)
-        pbar.update(1)
+        if pbar:
+            pbar.update(1)
         return result
 
     tasks = [probe_and_update(p) for p in ports]
     results = await asyncio.gather(*tasks)
-    pbar.close()
+    if pbar:
+        pbar.close()
     return results
 
 def parse_ports(port_str):

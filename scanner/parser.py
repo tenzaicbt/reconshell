@@ -1,7 +1,8 @@
 import argparse
 
-def get_parser():
-    parser = argparse.ArgumentParser(description="ReconShell - Advanced Port Scanner")
+
+def get_parser(parser_cls=argparse.ArgumentParser):
+    parser = parser_cls(description="ReconShell - Advanced Port Scanner")
     parser.add_argument("target", help="Target IP or hostname")
     parser.add_argument("-p", "--ports", default="1-1000", help="Ports (e.g. 22,80,443,1000-2000)")
     parser.add_argument("--common", action='store_true', help="Scan only common ports (21,22,23,25,53,80,110,143,443,993,995,3306,3389)")
