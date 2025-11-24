@@ -241,6 +241,7 @@ def main():
 + -- --=[ Advanced port scanning tool for penetration testing ]
 + -- --=[ Supports TCP, UDP, SYN scans with service detection ]
 + -- --=[ Use --help for options and usage information ]
++ -- --=[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
 """
     print(banner)
     parser = get_parser(parser_cls=ReconArgumentParser)
