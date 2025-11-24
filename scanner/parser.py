@@ -7,6 +7,6 @@ def get_parser():
     parser.add_argument("--common", action='store_true', help="Scan only common ports (21,22,23,25,53,80,110,143,443,993,995,3306,3389)")
     parser.add_argument("--syn", action='store_true', help="Enable SYN scan (requires root)")
     parser.add_argument("-c", "--concurrency", type=int, default=200, help="Concurrent tasks")
-    parser.add_argument("-T", "--timeout", type=float, default=0.2, help="Timeout in seconds")
+    parser.add_argument("-T", "--timeout", type=float, default=1.0, help="Timeout in seconds")
     parser.add_argument("--details", action='store_true', help="Show detailed IP information")
     return parser

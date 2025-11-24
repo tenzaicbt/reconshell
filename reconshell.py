@@ -42,12 +42,12 @@ def get_target_info(target):
 
 def get_host_status(ip):
     try:
-        result = subprocess.run(['ping', '-c', '1', '-W', '1', ip], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(['ping', '-n', '1', '-w', '1000', ip], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             lines = result.stdout.split('\n')
             for line in lines:
-                if 'time=' in line:
-                    latency = line.split('time=')[1].split(' ')[0]
+                if 'time=' in line or 'time<' in line:
+                    latency = line.split('time')[1].split('=')[1].split(' ')[0] if '=' in line.split('time')[1] else line.split('time')[1].split('<')[1].split(' ')[0]
                     return 'up', latency + ' ms'
             return 'up', 'N/A'
         else:
@@ -82,7 +82,7 @@ def get_ip_details(ip):
 def run_tcp_scan(args):
     ports = parse_ports(args.ports)
     try:
-        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, False, progress=True))
+        results = asyncio.run(tcp_scan(args.target, ports, args.concurrency, args.timeout, False, progress=False))
     except KeyboardInterrupt:
         print("Interrupted")
         return []
@@ -90,7 +90,7 @@ def run_tcp_scan(args):
 
 def run_syn_scan(args):
     ports = parse_ports(args.ports)
-    open_ports, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True)
+    open_ports, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=False)
     results = [{'port': p, 'status': 'open', 'protocol': 'tcp', 'method': 'syn'} for p in open_ports]
     return results, os_info
 
@@ -99,7 +99,7 @@ def run_udp_scan(args):
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as executor:
         futures = {executor.submit(udp_probe, args.target, port, args.timeout): port for port in ports}
-        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=False) as pbar:
+        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=True) as pbar:
             for future in concurrent.futures.as_completed(futures):
                 port = futures[future]
                 try:
@@ -185,26 +185,13 @@ def main():
     os_info = "Unknown"
     ip_details = get_ip_details(args.target) if args.details else {}
 
-    # Run scans in parallel
-    tcp_results = []
-    syn_results = []
-    udp_results = []
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = {}
-        futures[executor.submit(run_tcp_scan, args)] = 'tcp'
-        futures[executor.submit(run_udp_scan, args)] = 'udp'
-        if args.syn:
-            futures[executor.submit(run_syn_scan, args)] = 'syn'
-
-        for future in concurrent.futures.as_completed(futures):
-            scan_type = futures[future]
-            if scan_type == 'tcp':
-                tcp_results = future.result()
-            elif scan_type == 'syn':
-                syn_results, os_info = future.result()
-            elif scan_type == 'udp':
-                udp_results = future.result()
+    # Run scans sequentially
+    tcp_results = run_tcp_scan(args)
+    udp_results = run_udp_scan(args)
+    if args.syn:
+        syn_results, os_info = run_syn_scan(args)
+    else:
+        syn_results = []
 
     all_results = tcp_results + syn_results + udp_results
 
