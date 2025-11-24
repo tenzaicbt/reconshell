@@ -177,6 +177,10 @@ def main():
     parser = get_parser()
     args = parser.parse_args()
 
+    # Handle --common option
+    if args.common:
+        args.ports = "21,22,23,25,53,80,110,143,443,993,995,3306,3389"
+
     start_time = time.time()
     target_info = get_target_info(args.target)
     host_status, latency = get_host_status(target_info['ip'])

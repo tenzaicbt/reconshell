@@ -103,6 +103,11 @@ ReconShell automatically scans both TCP and UDP ports simultaneously with real-t
 python reconshell.py 192.168.1.10
 ```
 
+### Quick Common Ports Scan
+```bash
+python reconshell.py www.google.com --common
+```
+
 ### Custom Ports
 ```bash
 python reconshell.py 192.168.1.10 -p 22,80,443
@@ -121,7 +126,8 @@ python reconshell.py 192.168.1.10 --details
 ## Options
 
 - `target`: Target IP or hostname (positional argument)
-- `-p, --ports`: Ports (e.g., 22,80,443,1000-2000)
+- `-p, --ports`: Ports (e.g., 22,80,443,1000-2000) (default: 1-1000)
+- `--common`: Scan only common ports (21,22,23,25,53,80,110,143,443,993,995,3306,3389)
 - `--syn`: Enable SYN scan (requires root; adds to default TCP/UDP)
 - `-c, --concurrency`: Concurrent tasks (default: 200)
 - `-T, --timeout`: Timeout in seconds (default: 0.2)
