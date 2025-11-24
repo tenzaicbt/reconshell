@@ -179,11 +179,6 @@ ____                  ____  _          _ _
     parser = get_parser()
     args = parser.parse_args()
 
-    # If no scan type specified, default to TCP and UDP
-    if not (args.tcp or args.syn or args.udp):
-        args.tcp = True
-        args.udp = True
-
     start_time = time.time()
     target_info = get_target_info(args.target)
     host_status, latency = get_host_status(target_info['ip'])
