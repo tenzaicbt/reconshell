@@ -3,7 +3,6 @@
 reconshell.py
 Master launcher for ReconShell - Advanced Port Scanner.
 """
-import json
 import sys
 import os
 import time
@@ -98,12 +97,19 @@ def run_syn_scan(args):
 def run_udp_scan(args):
     ports = parse_ports(args.ports)
     results = []
-    with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=not args.progress) as pbar:
-        for port in ports:
-            status, banner = udp_probe(args.target, port, timeout=args.timeout)
-            result = {'port': port, 'status': status, 'protocol': 'udp', 'banner': banner}
-            results.append(result)
-            pbar.update(1)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as executor:
+        futures = {executor.submit(udp_probe, args.target, port, args.timeout): port for port in ports}
+        with tqdm.tqdm(total=len(ports), desc="UDP Scan", disable=not args.progress) as pbar:
+            for future in concurrent.futures.as_completed(futures):
+                port = futures[future]
+                try:
+                    status, banner = future.result()
+                    result = {'port': port, 'status': status, 'protocol': 'udp', 'banner': banner}
+                    results.append(result)
+                except Exception as e:
+                    result = {'port': port, 'status': f'err:{e}', 'protocol': 'udp', 'banner': None}
+                    results.append(result)
+                pbar.update(1)
     return results
 
 def add_banners(results, args):
@@ -127,38 +133,27 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         else:
             return f"{BLUE}{state.upper()}{ENDC}"
 
-    if args.json:
-        data = {
-            'target_info': target_info,
-            'host_status': {'status': host_status, 'latency': latency},
-            'results': results,
-            'os': os_info,
-            'ip_details': ip_details,
-            'scan_time': scan_time
-        }
-        output = json.dumps(data, indent=2)
-    else:
-        # Filter to show only open and closed ports, and known services
-        filtered_results = [r for r in results if r['status'] in ['open', 'closed']]
-        filtered_results = [r for r in filtered_results if get_service_name(r['port'], r.get('protocol', 'tcp')) != 'unknown']
-        output = f"{CYAN}Target Info:{ENDC} IP: {target_info.get('ip', 'N/A')}, Hostname: {target_info.get('hostname', 'N/A')}\n"
-        output += f"{CYAN}Host Status:{ENDC} {host_status.title()}, Latency: {latency}\n\n"
-        output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
-        output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Banner'}\n"
-        output += "-" * 70 + "\n"
-        for r in sorted(filtered_results, key=lambda x: x['port']):
-            service = get_service_name(r['port'], r.get('protocol', 'tcp'))
-            state_colored = color_state(r['status'])
-            banner = r.get('banner', '') if r.get('banner') else ''
-            output += f"{r['port']:<8} {r.get('protocol', 'tcp'):<10} {state_colored:<12} {service:<15} {banner}\n"
-        open_count = len([r for r in filtered_results if r.get('status') == 'open'])
-        output += f"\n{CYAN}Total Open Ports:{ENDC} {open_count}\n"
-        output += f"{CYAN}Scan Time:{ENDC} {scan_time:.2f} seconds\n"
-        output += f"{CYAN}OS Guess:{ENDC} {os_info}\n"
-        if ip_details:
-            output += f"\n{CYAN}IP Details:{ENDC}\n"
-            for k, v in ip_details.items():
-                output += f"  {k}: {v}\n"
+    # Filter to show only open and closed ports, and known services
+    filtered_results = [r for r in results if r['status'] in ['open', 'closed']]
+    filtered_results = [r for r in filtered_results if get_service_name(r['port'], r.get('protocol', 'tcp')) != 'unknown']
+    output = f"{CYAN}Target Info:{ENDC} IP: {target_info.get('ip', 'N/A')}, Hostname: {target_info.get('hostname', 'N/A')}\n"
+    output += f"{CYAN}Host Status:{ENDC} {host_status.title()}, Latency: {latency}\n\n"
+    output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
+    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Banner'}\n"
+    output += "-" * 70 + "\n"
+    for r in sorted(filtered_results, key=lambda x: x['port']):
+        service = get_service_name(r['port'], r.get('protocol', 'tcp'))
+        state_colored = color_state(r['status'])
+        banner = r.get('banner', '') if r.get('banner') else ''
+        output += f"{r['port']:<8} {r.get('protocol', 'tcp'):<10} {state_colored:<12} {service:<15} {banner}\n"
+    open_count = len([r for r in filtered_results if r.get('status') == 'open'])
+    output += f"\n{CYAN}Total Open Ports:{ENDC} {open_count}\n"
+    output += f"{CYAN}Scan Time:{ENDC} {scan_time:.2f} seconds\n"
+    output += f"{CYAN}OS Guess:{ENDC} {os_info}\n"
+    if ip_details:
+        output += f"\n{CYAN}IP Details:{ENDC}\n"
+        for k, v in ip_details.items():
+            output += f"  {k}: {v}\n"
 
     if args.output:
         with open(args.output, 'w') as f:
@@ -204,12 +199,10 @@ ____                  ____  _          _ _
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = {}
-        if args.tcp:
-            futures[executor.submit(run_tcp_scan, args)] = 'tcp'
+        futures[executor.submit(run_tcp_scan, args)] = 'tcp'
+        futures[executor.submit(run_udp_scan, args)] = 'udp'
         if args.syn:
             futures[executor.submit(run_syn_scan, args)] = 'syn'
-        if args.udp:
-            futures[executor.submit(run_udp_scan, args)] = 'udp'
 
         for future in concurrent.futures.as_completed(futures):
             scan_type = futures[future]
