@@ -3,6 +3,8 @@
 reconshell.py
 Master launcher for ReconShell - Advanced Port Scanner.
 """
+import os
+os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
 import sys
 import os
 import time
