@@ -123,28 +123,6 @@ python3 reconshell.py 192.168.1.10 --details
 - Only scan hosts/networks you own or have explicit permission to test.
 - The tool includes a legal disclaimer to promote authorized use only.
 
-## Example Output
-
-```
-Target Information:
-  IP Address: 142.250.4.106
-  Hostname: sa-in-f105.1e100.net
-  Host Status: Unknown
-  Latency: N/A
-
-Scan Results for www.google.com:
-Port     Protocol   State        Service         Version Info
-----------------------------------------------------------------------
-80       tcp        OPEN         http            gws (Google Web Server)
-443      tcp        OPEN         https           gws (Google Web Server)
-
-Total Open Ports: 2
-Scan Time: 7.12 seconds
-
-Detected Servers:
-  Google Web Server (GWS): Google's proprietary web server software used for their services like Google Search, Gmail, etc. It does not expose version details publicly for security reasons.
-```
-
 ## Roadmap
 
 - Port ranges and host ranges (CIDR scanning)
