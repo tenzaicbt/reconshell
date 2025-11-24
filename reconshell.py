@@ -180,8 +180,14 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
     # Filter to show only open and closed ports, and known services
     filtered_results = [r for r in results if r['status'] in ['open', 'closed']]
     filtered_results = [r for r in filtered_results if get_service_name(r['port'], r.get('protocol', 'tcp')) != 'unknown']
-    output = f"{CYAN}Target Info:{ENDC} IP: {target_info.get('ip', 'N/A')}, Hostname: {target_info.get('hostname', 'N/A')}\n"
-    output += f"{CYAN}Host Status:{ENDC} {host_status.title()}, Latency: {latency}\n\n"
+    
+    # Advanced Target Info
+    output = f"{CYAN}Target Information:{ENDC}\n"
+    output += f"  {CYAN}IP Address:{ENDC} {target_info.get('ip', 'N/A')}\n"
+    output += f"  {CYAN}Hostname:{ENDC} {target_info.get('hostname', 'N/A')}\n"
+    output += f"  {CYAN}Host Status:{ENDC} {host_status.title()}\n"
+    output += f"  {CYAN}Latency:{ENDC} {latency}\n\n"
+    
     output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
     output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Version Info'}\n"
     output += "-" * 70 + "\n"
