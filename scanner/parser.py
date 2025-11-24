@@ -8,6 +8,5 @@ def get_parser():
     parser.add_argument("-c", "--concurrency", type=int, default=200, help="Concurrent tasks")
     parser.add_argument("-T", "--timeout", type=float, default=0.2, help="Timeout in seconds")
     parser.add_argument("-o", "--output", help="Output file")
-    parser.add_argument("--progress", action='store_true', help="Show progress bar during scanning")
     parser.add_argument("--details", action='store_true', help="Show detailed IP information")
     return parser

@@ -26,7 +26,7 @@ The `start.sh` (Linux/macOS) and `start.ps1` (Windows) scripts provide a conveni
 Example:
 ```bash
 # Linux - Combined TCP and UDP scan
-./start.sh example.com --progress
+./start.sh example.com
 
 # Windows PowerShell - SYN scan
 .\start.ps1 example.com --syn
@@ -110,9 +110,9 @@ python reconshell.py 192.168.1.10 -p 22,80,443
 sudo python reconshell.py 192.168.1.10 --syn
 ```
 
-### With Banner Grabbing and Progress
+### With Details
 ```bash
-python reconshell.py 192.168.1.10 --progress
+python reconshell.py 192.168.1.10 --details
 ```
 
 ## Options
@@ -123,7 +123,6 @@ python reconshell.py 192.168.1.10 --progress
 - `-c, --concurrency`: Concurrent tasks (default: 200)
 - `-T, --timeout`: Timeout in seconds (default: 0.2)
 - `-o, --output`: Output file
-- `--progress`: Show progress bar during scanning
 - `--details`: Show detailed IP information
 
 ## Security Notes
