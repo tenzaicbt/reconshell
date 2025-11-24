@@ -19,9 +19,22 @@ Quick Start (print header + run scanner)
 .\\\start.ps1 -t 64.233.170.101 -p 1-100 --progress
 ```
 
+## Running with Scripts
+
+The `start.sh` (Linux/macOS) and `start.ps1` (Windows) scripts provide a convenient way to run the scanner with a header display. They pass all arguments directly to `reconshell.py`.
+
+Example:
+```bash
+# Linux
+./start.sh --tcp -t example.com -p 80,443 --banner
+
+# Windows PowerShell
+.\start.ps1 --syn -t example.com -p 1-1000 -T 0.5
+```
+
 # ReconShell - Advanced Port Scanner
 
-A practical, Linux-friendly advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners.
+A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners.
 
 ## Features
 
@@ -36,23 +49,47 @@ A practical, Linux-friendly advanced port scanner (like a tiny `nmap`) you can r
 
 ## Installation
 
-1. Install Python packages:
+### Prerequisites
+- Python 3.6+
+- For SYN scanning: root/admin privileges and `scapy` library
+
+### Setup Steps
+
+1. Clone or download the repository.
+
+2. Create a virtual environment (recommended):
    ```bash
-   sudo apt update
-   sudo apt install python3-pip
-   pip3 install scapy
+   # Linux/macOS
+   python3 -m venv venv
+   source venv/bin/activate
+
+   # Windows
+   python -m venv venv
+   venv\Scripts\activate
    ```
 
-2. Make scripts executable:
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Make scripts executable (Linux/macOS):
    ```bash
    chmod +x reconshell.py
    chmod +x scanner/*.py
+   chmod +x setup.sh
+   chmod +x start.sh
    ```
 
-Or run the setup script:
-```bash
-./setup.sh
-```
+   Or run the setup script:
+   ```bash
+   ./setup.sh
+   ```
+
+### Windows Specific Notes
+- Use PowerShell for running scripts
+- For SYN scanning, run PowerShell as Administrator
+- Python executable might be `python` instead of `python3`
 
 ## Usage
 
