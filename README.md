@@ -100,27 +100,27 @@ ReconShell automatically scans both TCP and UDP ports simultaneously with real-t
 
 ### Basic Scan (TCP + UDP by default, ports 1-1000)
 ```bash
-python reconshell.py 192.168.1.10
+python3 reconshell.py 192.168.1.10
 ```
 
 ### Quick Common Ports Scan
 ```bash
-python reconshell.py www.google.com --common
+python3 reconshell.py www.google.com --common
 ```
 
 ### Custom Ports
 ```bash
-python reconshell.py 192.168.1.10 -p 22,80,443
+python3 reconshell.py 192.168.1.10 -p 22,80,443
 ```
 
 ### SYN Scan (requires root, adds to TCP/UDP)
 ```bash
-sudo python reconshell.py 192.168.1.10 --syn
+sudo python3 reconshell.py 192.168.1.10 --syn
 ```
 
 ### With Details
 ```bash
-python reconshell.py 192.168.1.10 --details
+python3 reconshell.py 192.168.1.10 --details
 ```
 
 ## Options
