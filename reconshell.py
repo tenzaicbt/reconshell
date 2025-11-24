@@ -153,11 +153,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         for k, v in ip_details.items():
             output += f"  {k}: {v}\n"
 
-    if args.output:
-        with open(args.output, 'w') as f:
-            f.write(output)
-    else:
-        print(output)
+    print(output)
 
 def main():
     banner = r"""

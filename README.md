@@ -131,7 +131,6 @@ python3 reconshell.py 192.168.1.10 --details
 - `--syn`: Enable SYN scan (requires root; adds to default TCP/UDP)
 - `-c, --concurrency`: Concurrent tasks (default: 200)
 - `-T, --timeout`: Timeout in seconds (default: 0.2)
-- `-o, --output`: Output file
 - `--details`: Show detailed IP information
 
 ## Security Notes
