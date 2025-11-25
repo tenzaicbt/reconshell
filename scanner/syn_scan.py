@@ -6,10 +6,14 @@ Usage:
   sudo python3 syn_scan.py 192.168.1.1 -p 1-1024
 """
 import argparse
+import errno
+import os
+import random
 import socket
 import time
-from typing import List, Dict, Tuple
-from scapy.all import IP, TCP, sr1, RandShort, conf, send
+from typing import Dict, List, Optional, Tuple
+from scapy.all import IP, TCP, sr, conf, send
+from scapy.error import Scapy_Exception
 from .progress import ProgressBar
 
 try:
@@ -18,6 +22,56 @@ except ImportError:  # pragma: no cover - direct script execution fallback
     from banner import grab_version_tcp
 
 conf.verb = 0  # scapy quiet
+
+# Ensure pcap is used on Windows so sr/sr1 work reliably with Npcap
+if os.name == 'nt' and hasattr(conf, 'use_pcap'):
+    conf.use_pcap = True
+
+
+def _is_windows_admin() -> bool:
+    if os.name != 'nt':
+        return False
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def _check_raw_socket_access() -> Optional[Exception]:
+    try:
+        test_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
+    except OSError as exc:  # pragma: no cover - platform dependent
+        if os.name == 'nt':
+            winerror = getattr(exc, 'winerror', None)
+            if winerror == 10013 or exc.errno in (errno.EPERM, errno.EACCES):
+                return PermissionError(
+                    "Raw socket access denied. Install Npcap (enable WinPcap compatibility) and run as Administrator."
+                )
+            return OSError(f"Unable to open raw socket on Windows: {exc}")
+        if exc.errno in (errno.EPERM, errno.EACCES):
+            return PermissionError("Raw socket access denied. Ensure CAP_NET_RAW is granted (try sudo or setcap).")
+        return OSError(f"Unable to open raw socket: {exc}")
+    else:
+        test_socket.close()
+        return None
+
+
+def check_syn_requirements() -> Optional[Exception]:
+    """Return an exception describing why SYN scan cannot run, or None when ok."""
+
+    if os.name == 'nt':
+        if not _is_windows_admin():
+            return PermissionError(
+                "SYN scan requires administrative privileges on Windows. Run PowerShell as Administrator."
+            )
+        return _check_raw_socket_access()
+
+    if hasattr(os, 'geteuid') and os.geteuid() != 0:  # pragma: no cover - requires root to hit else path
+        return PermissionError("SYN scan requires root privileges (try running with sudo).")
+
+    return _check_raw_socket_access()
 
 # use shared ProgressBar from scanner.progress
 
@@ -47,55 +101,93 @@ def detect_os(resp):
     else:
         return f"TTL:{ttl}, Window:{window}"
 
-def scan_syn(target: str, ports: List[int], timeout: float = 1.0, progress: bool = False, version_probe: bool = True) -> Tuple[List[Dict[str, object]], str]:
+def scan_syn(
+    target: str,
+    ports: List[int],
+    timeout: float = 1.0,
+    progress: bool = False,
+    version_probe: bool = True,
+    max_duration: Optional[float] = None,
+) -> Tuple[List[Dict[str, object]], str]:
     results: List[Dict[str, object]] = []
     os_info = "Unknown"
 
+    prereq_error = check_syn_requirements()
+    if prereq_error:
+        raise prereq_error
+
+    start_time = time.time()
     if progress:
         pbar = ProgressBar(total=len(ports), desc="SYN", width=10, protocol='syn')
     else:
         pbar = None
 
-    for port in ports:
-        src_port = RandShort()
-        pkt = IP(dst=target)/TCP(sport=src_port, dport=port, flags='S')
+    batch_size = 100
+    seen_open_ports = set()
+
+    for idx in range(0, len(ports), batch_size):
+        if max_duration is not None and (time.time() - start_time) > max_duration:
+            if pbar:
+                pbar.close()
+            raise TimeoutError(f"SYN scan exceeded max duration ({max_duration:.1f}s)")
+
+        batch = ports[idx:idx + batch_size]
         send_ts = time.time()
-        resp = sr1(pkt, timeout=timeout)
-        if pbar:
-            pbar.update(1)
+        packets = []
+        for port in batch:
+            sport = random.randint(1024, 65535)
+            packets.append(IP(dst=target) / TCP(sport=sport, dport=port, flags='S'))
 
-        if resp is None:
-            continue
+        try:
+            answered, _ = sr(packets, timeout=timeout, verbose=False)
+        except Scapy_Exception as exc:  # pragma: no cover - depends on platform setup
+            message = str(exc).strip() or "Scapy failed during SYN scan."
+            lowered = message.lower()
+            if any(token in lowered for token in ("permission", "npcap", "winpcap", "raw socket")):
+                raise PermissionError(message) from exc
+            raise
 
-        rtt = None
-        if hasattr(resp, 'time'):
-            rtt = max(resp.time - send_ts, 0)
-        else:
-            rtt = max(time.time() - send_ts, 0)
+        for sent_pkt, resp in answered:
+            port = int(sent_pkt[TCP].dport)
+            if not resp.haslayer(TCP):
+                continue
 
-        if resp.haslayer(TCP):
             flags = resp.getlayer(TCP).flags
-            if flags & 0x12 == 0x12:  # SYN/ACK -> open
-                if os_info == "Unknown":
-                    os_info = detect_os(resp)
+            if flags & 0x12 != 0x12:  # no SYN/ACK
+                continue
 
-                service = get_service_name(port)
-                entry: Dict[str, object] = {
-                    'port': port,
-                    'protocol': 'tcp',
-                    'state': 'open',
-                    'service': service,
-                }
+            if os_info == "Unknown":
+                os_info = detect_os(resp)
 
-                if rtt is not None:
-                    entry['rtt_ms'] = round(rtt * 1000, 2)
+            rtt = None
+            if hasattr(resp, 'time'):
+                rtt = max(resp.time - send_ts, 0)
+            else:
+                rtt = max(time.time() - send_ts, 0)
 
-                results.append(entry)
+            service = get_service_name(port)
+            if port in seen_open_ports:
+                continue
+            seen_open_ports.add(port)
+            entry: Dict[str, object] = {
+                'port': port,
+                'protocol': 'tcp',
+                'state': 'open',
+                'service': service,
+            }
 
-                try:
-                    send(IP(dst=target)/TCP(sport=src_port, dport=port, flags='R'), verbose=False)
-                except Exception:
-                    pass
+            if rtt is not None:
+                entry['rtt_ms'] = round(rtt * 1000, 2)
+
+            results.append(entry)
+
+            try:
+                send(IP(dst=target)/TCP(sport=sent_pkt[TCP].sport, dport=port, flags='R'), verbose=False)
+            except Exception:
+                pass
+
+        if pbar:
+            pbar.update(len(batch))
 
     if pbar:
         pbar.close()
@@ -106,6 +198,10 @@ def scan_syn(target: str, ports: List[int], timeout: float = 1.0, progress: bool
         else:
             vbar = None
         for entry in results:
+            if max_duration is not None and (time.time() - start_time) > max_duration:
+                if vbar:
+                    vbar.close()
+                raise TimeoutError(f"SYN scan exceeded max duration ({max_duration:.1f}s)")
             port = entry['port']  # type: ignore[index]
             version = grab_version_tcp(target, port, timeout=timeout)
             entry['version'] = version or ''
@@ -136,11 +232,30 @@ def main():
     p.add_argument("-p", "--ports", default="1-1024")
     p.add_argument("-t", "--timeout", type=float, default=1.0)
     p.add_argument("--no-version", action='store_true', help="Skip service version detection stage")
+    p.add_argument("--max-duration", type=float, default=None, help="Abort scan after N seconds")
     args = p.parse_args()
     ports = parse_ports(args.ports)
     print(f"Starting SYN scan against {args.target} ({len(ports)} ports)")
     start_ts = time.time()
-    results, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True, version_probe=not args.no_version)
+    try:
+        results, os_info = scan_syn(
+            args.target,
+            ports,
+            timeout=args.timeout,
+            progress=True,
+            version_probe=not args.no_version,
+            max_duration=args.max_duration,
+        )
+    except PermissionError as exc:
+        print(f"Error: {exc}")
+        return
+    except OSError as exc:
+        print(f"Error: {exc}")
+        return
+    except TimeoutError as exc:
+        print(f"Error: {exc}")
+        return
+
     elapsed = time.time() - start_ts
 
     if results:

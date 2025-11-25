@@ -116,12 +116,23 @@ def run_syn_scan(args):
     had_perm_error = False
     had_other_error = False
     err_msg = None
+    had_timeout_error = False
     with open(os.devnull, 'w') as devnull:
         with contextlib.redirect_stderr(devnull), contextlib.redirect_stdout(devnull):
             try:
-                syn_results, os_info = scan_syn(args.target, ports, timeout=args.timeout, progress=True, version_probe=False)
+                syn_results, os_info = scan_syn(
+                    args.target,
+                    ports,
+                    timeout=args.timeout,
+                    progress=True,
+                    version_probe=False,
+                    max_duration=20.0,
+                )
             except (PermissionError, OSError) as e:
                 had_perm_error = True
+                err_msg = str(e)
+            except TimeoutError as e:
+                had_timeout_error = True
                 err_msg = str(e)
             except Exception as e:
                 had_other_error = True
@@ -134,10 +145,16 @@ def run_syn_scan(args):
                     pass
 
     if had_perm_error:
-        print(f"\n{YELLOW}WARNING:{ENDC} SYN scan requires elevated privileges or a packet capture driver (e.g. Npcap) on this platform. Skipping SYN scan.")
+        detail = err_msg or "SYN scan requires raw socket privileges (sudo on Linux, Administrator with Npcap on Windows)."
+        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
+        return [], "Unknown"
+    if had_timeout_error:
+        detail = err_msg or "SYN scan exceeded the maximum runtime and was aborted."
+        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
         return [], "Unknown"
     if had_other_error:
-        print(f"\n{YELLOW}WARNING:{ENDC} SYN scan failed: {err_msg}. Skipping SYN scan.")
+        detail = err_msg or "SYN scan failed for an unknown reason."
+        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
         return [], "Unknown"
     results = []
     for entry in syn_results:
@@ -255,11 +272,11 @@ def main():
     print(RED + centered_banner + ENDC)
     
     banner = r"""
-       =[ ReconShell - Advanced Port Scanner ]
-+ -- --=[ Advanced port scanning tool for penetration testing ]
-+ -- --=[ Supports TCP, UDP, SYN scans with service detection ]
-+ -- --=[ Use --help for options and usage information ]
-+ -- --=[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
+[ ReconShell - Advanced Port Scanner ]
+[ Advanced port scanning tool for penetration testing ]
+[ Supports TCP, UDP, SYN scans with service detection ]
+[ Use --help for options and usage information ]
+[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
 """
     print(banner)
     parser = get_parser(parser_cls=ReconArgumentParser)
