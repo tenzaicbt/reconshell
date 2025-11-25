@@ -24,6 +24,14 @@ YELLOW = '\033[93m'
 BLUE = '\033[94m'
 CYAN = '\033[96m'
 ENDC = '\033[0m'
+BOLD = '\033[1m'
+
+TOOL_VERSION = "v1.0-dev"
+
+INFO_PREFIX = f"{BLUE}[*]{ENDC}"
+GOOD_PREFIX = f"{GREEN}[+]{ENDC}"
+WARN_PREFIX = f"{YELLOW}[!]{ENDC}"
+BAD_PREFIX = f"{RED}[-]{ENDC}"
 
 # Add scanner to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scanner'))
@@ -50,6 +58,25 @@ class ReconArgumentParser(argparse.ArgumentParser):
         self.print_help(sys.stderr)
         sys.stderr.write('\n')
         raise SystemExit(2)
+
+
+BANNER_LOGO = r"""
+     _____                          _____ _           _ _
+    |  __ \                        / ____ | |        | | |
+    | |__) |___  ___ ___  _ __    | (___  | |__   ___| | |
+    |  _  // _ \/ __/ _ \| '_  \   \ ___ \| '_ \ / _ \ | |
+    | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
+    |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
+"""
+
+
+def print_banner() -> None:
+    print(f"{RED}{BANNER_LOGO}{ENDC}")
+    print(f"       ={CYAN}[ ReconShell {TOOL_VERSION} - Advanced Port Scanner ]{ENDC}")
+    print(f"+ -- --=[ {CYAN}Multi-protocol reconnaissance engine (TCP | UDP | SYN){ENDC} ]")
+    print(f"+ -- --=[ {CYAN}Service and version fingerprinting with async workflows{ENDC} ]")
+    print(f"+ -- --=[ {CYAN}Use --help for options and usage information{ENDC} ]")
+    print(f"+ -- --=[ {YELLOW}WARNING: Authorized testing only. Unauthorized scanning is illegal.{ENDC} ]\n")
 
 def get_target_info(target):
     try:
@@ -146,15 +173,15 @@ def run_syn_scan(args):
 
     if had_perm_error:
         detail = err_msg or "SYN scan requires raw socket privileges (sudo on Linux, Administrator with Npcap on Windows)."
-        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
+        print(f"\n{WARN_PREFIX} {detail} Skipping SYN scan.")
         return [], "Unknown"
     if had_timeout_error:
         detail = err_msg or "SYN scan exceeded the maximum runtime and was aborted."
-        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
+        print(f"\n{WARN_PREFIX} {detail} Skipping SYN scan.")
         return [], "Unknown"
     if had_other_error:
         detail = err_msg or "SYN scan failed for an unknown reason."
-        print(f"\n{YELLOW}WARNING:{ENDC} {detail} Skipping SYN scan.")
+        print(f"\n{WARN_PREFIX} {detail} Skipping SYN scan.")
         return [], "Unknown"
     results = []
     for entry in syn_results:
@@ -202,45 +229,56 @@ def add_versions(results, args):
                 r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
-    def color_state(state):
-        if state == 'open':
-            return f"{GREEN}{state.upper()}{ENDC}"
-        elif state == 'closed':
-            return f"{RED}{state.upper()}{ENDC}"
-        elif state == 'no-response':
-            return f"{YELLOW}{state.upper()}{ENDC}"
+    def format_state(state: str, width: int = 12) -> str:
+        raw = (state or 'unknown').upper()
+        if raw == 'OPEN':
+            colored = f"{GREEN}{raw}{ENDC}"
+        elif raw == 'CLOSED':
+            colored = f"{RED}{raw}{ENDC}"
+        elif raw in ('FILTERED', 'NO-RESPONSE'):
+            colored = f"{YELLOW}{raw}{ENDC}"
         else:
-            return f"{BLUE}{state.upper()}{ENDC}"
+            colored = f"{BLUE}{raw}{ENDC}"
+        padding = max(width - len(raw), 1)
+        return f"{colored}{' ' * padding}"
 
-    # Filter to show only open and closed ports, and known services
-    filtered_results = [r for r in results if r['status'] in ['open', 'closed']]
-    filtered_results = [r for r in filtered_results if get_service_name(r['port'], r.get('protocol', 'tcp')) != 'unknown']
-    
-    # Advanced Target Info
-    output = f"{CYAN}Target Information:{ENDC}\n"
-    output += f"  {CYAN}IP Address:{ENDC} {target_info.get('ip', 'N/A')}\n"
-    output += f"  {CYAN}Hostname:{ENDC} {target_info.get('hostname', 'N/A')}\n"
-    output += f"  {CYAN}Host Status:{ENDC} {host_status.title()}\n"
-    output += f"  {CYAN}Latency:{ENDC} {latency}\n\n"
-    
-    output += f"{CYAN}Scan Results for {args.target}:{ENDC}\n"
-    output += f"{'Port':<8} {'Protocol':<10} {'State':<12} {'Service':<15} {'Version Info'}\n"
-    output += "-" * 70 + "\n"
-    for r in sorted(filtered_results, key=lambda x: x['port']):
-        service = get_service_name(r['port'], r.get('protocol', 'tcp'))
-        state_colored = color_state(r['status'])
-        version = r.get('version', '') if r.get('version') else ''
-        output += f"{r['port']:<8} {r.get('protocol', 'tcp'):<10} {state_colored:<12} {service:<15} {version}\n"
+    filtered_results = [r for r in results if r.get('status') in ('open', 'closed')]
+
+    def fmt_detail(label: str, value: str) -> str:
+        return f"    {label:<14}: {value}"
+
+    host_line = host_status.title() if isinstance(host_status, str) else host_status
+    print(f"{INFO_PREFIX} Target Information")
+    print(fmt_detail("IP Address", target_info.get('ip', 'N/A')))
+    print(fmt_detail("Hostname", target_info.get('hostname', 'N/A')))
+    print(fmt_detail("Host Status", host_line))
+    print(fmt_detail("Latency", latency))
+
+    header = f"{'PORT':<12}{'STATE':<12}{'SERVICE':<18}{'VERSION'}"
+    print(f"\n{INFO_PREFIX} Scan Results for {args.target}")
+    print(f"    {header}")
+    print(f"    {'-' * len(header)}")
+
+    for item in sorted(filtered_results, key=lambda x: (x['port'], x.get('protocol', 'tcp'))):
+        r = item
+        port = r['port']
+        protocol = r.get('protocol', 'tcp')
+        state_display = format_state(r.get('status', 'unknown'))
+        service = r.get('service') or get_service_name(port, protocol)
+        version = r.get('version', '') or ''
+        port_display = f"{port}/{protocol}"
+        print(f"    {port_display:<12} {state_display}{service:<18} {version}")
+
     open_count = len([r for r in filtered_results if r.get('status') == 'open'])
-    output += f"\n{CYAN}Total Open Ports:{ENDC} {open_count}\n"
-    output += f"{CYAN}Scan Time:{ENDC} {scan_time:.2f} seconds\n"
-    output += f"{CYAN}OS Guess:{ENDC} {os_info}\n"
-    if ip_details:
-        output += f"\n{CYAN}IP Details:{ENDC}\n"
-        for k, v in ip_details.items():
-            output += f"  {k}: {v}\n"
+    print(f"\n{GOOD_PREFIX} Total Open Ports : {open_count}")
+    print(f"{INFO_PREFIX} Scan Duration    : {scan_time:.2f}s")
+    print(f"{INFO_PREFIX} OS Guess         : {os_info}")
 
-    # Check for known servers
+    if ip_details:
+        print(f"\n{INFO_PREFIX} IP Intelligence")
+        for k, v in ip_details.items():
+            print(fmt_detail(k, v))
+
     detected_servers = set()
     for r in results:
         version = (r.get('version') or '').lower()
@@ -248,37 +286,15 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             detected_servers.add('Google Web Server (GWS)')
 
     if detected_servers:
-        output += f"\n{CYAN}Detected Servers:{ENDC}\n"
-        for server in detected_servers:
+        print(f"\n{GOOD_PREFIX} Detected Servers")
+        for server in sorted(detected_servers):
             if 'Google Web Server' in server:
-                output += f"  {server}: Google's proprietary web server software used for their services like Google Search, Gmail, etc. It does not expose version details publicly for security reasons.\n"
-
-    print(output)
+                print("    Google Web Server (GWS): Google's proprietary web server platform (details intentionally undisclosed).")
+            else:
+                print(f"    {server}")
 
 def main():
-    old_banner = r"""
-   _____                          _____ _           _ _
-  |  __ \                        / ____ | |        | | |
-  | |__) |___  ___ ___  _ __    | (___  | |__   ___| | |
-  |  _  // _ \/ __/ _ \| '_  \   \ ___ \| '_ \ / _ \ | |
-  | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
-  |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
-
-                
-"""
-    lines = [line.rstrip() for line in old_banner.split('\n') if line.strip()]
-    max_len = max(len(line) for line in lines)
-    centered_banner = '\n'.join(line.center(max_len) for line in lines)
-    print(RED + centered_banner + ENDC)
-    
-    banner = r"""
-[ ReconShell - Advanced Port Scanner ]
-[ Advanced port scanning tool for penetration testing ]
-[ Supports TCP, UDP, SYN scans with service detection ]
-[ Use --help for options and usage information ]
-[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
-"""
-    print(banner)
+    print_banner()
     parser = get_parser(parser_cls=ReconArgumentParser)
     args = parser.parse_args()
 
