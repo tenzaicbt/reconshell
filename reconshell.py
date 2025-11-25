@@ -229,6 +229,41 @@ def add_versions(results, args):
                 r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
+    # If user requested --common, show both open and closed ports (exclude unknown services)
+    if getattr(args, 'common', False):
+        def format_state_label(s: str) -> str:
+            raw = (s or 'unknown').upper()
+            if raw == 'OPEN':
+                return f"{GREEN}{raw}{ENDC}"
+            if raw == 'CLOSED':
+                return f"{RED}{raw}{ENDC}"
+            return f"{BLUE}{raw}{ENDC}"
+
+        filtered = [r for r in results if r.get('status') in ('open', 'closed') and get_service_name(r['port'], r.get('protocol', 'tcp')) != 'unknown']
+        print(f"{INFO_PREFIX} Common Ports for {args.target}")
+        if not filtered:
+            print(f"{WARN_PREFIX} No open/closed ports with known services found")
+            print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
+            return
+
+        header = f"{'PORT':<12}{'STATE':<12}{'SERVICE':<18}{'VERSION'}"
+        print(f"    {header}")
+        print(f"    {'-' * len(header)}")
+        for r in sorted(filtered, key=lambda x: x['port']):
+            port = r['port']
+            proto = r.get('protocol', 'tcp')
+            state = format_state_label(r.get('status'))
+            service = r.get('service') or get_service_name(port, proto)
+            version = r.get('version', '') or ''
+            port_display = f"{port}/{proto}"
+            # ensure spacing so color codes don't break alignment
+            print(f"    {port_display:<12} {state:<12} {service:<18} {version}")
+
+        total = len(filtered)
+        print(f"\n{GOOD_PREFIX} Total (open/closed): {total}")
+        print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
+        return
+
     # Minimal output: show only open ports
     open_ports = [r for r in results if r.get('status') == 'open']
 
