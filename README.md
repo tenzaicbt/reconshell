@@ -1,134 +1,118 @@
 # ReconShell - Advanced Port Scanner
 ```
-   _____                          _____ _           _ _
-  |  __ \                        / ____ | |        | | |
-  | |__) |___  ___ ___  _ __    | (___  | |__   ___| | |
-  |  _  // _ \/ __/ _ \| '_  \   \ ___ \| '_ \ / _ \ | |
-  | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
-  |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
+   ## ReconShell - Advanced Port Scanner
 
-       =[ ReconShell - Advanced Port Scanner ]
-```
-       
-+ -- --=[ Advanced port scanning tool for penetration testing ]
-+ -- --=[ Supports TCP, UDP, SYN scans with service detection ]
-+ -- --=[ Use --help for options and usage information ]
-+ -- --=[ WARNING: Use only for authorized testing. Unauthorized scanning is illegal. ]
+       _____                          _____ _           _ _
+      |  __ \                        / ____ | |        | | |
+      | |__) |___  ___ ___  _ __    | (___  | |__   ___| | |
+      |  _  // _ \/ __/ _ \| '_  \   \ ___ \| '_ \ / _ \ | |
+      | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
+      |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
 
-A practical, cross-platform advanced port scanner (like a tiny `nmap`) you can run and extend. Includes three working implementations: TCP Connect, SYN, and UDP scanners that can run simultaneously for faster results.
+   ReconShell is a compact, extensible port-scanning toolkit inspired by tools like nmap. It provides multiple scanning modes (TCP connect, SYN, UDP), service/version detection, and a compact CLI UI with msfconsole-style visual cues.
 
-## Features
+   Highlights
 
-- **TCP Connect scanner** (cross-platform, doesn't need root; reliable)
-- **SYN scanner** (fast, stealthier, requires root and `scapy`)
-- **UDP scanner** (best-effort — UDP is noisy and ambiguous)
-- **Parallel scanning** - Run multiple scan types simultaneously for faster results
-- **Advanced service version detection** - Parses banners to extract detailed version information including software name, version numbers, and release years for all common protocols (SMTP, HTTP, FTP, SSH, Telnet, MySQL, PostgreSQL, RDP, VNC, SMB, SNMP, NTP, DNS, and more)
-- **Real-time custom progress bars** - Visual progress indication with filled bar style
-- **Concurrent execution** - High-performance scanning with configurable concurrency
-- **Advanced target information** - Detailed IP, hostname, status, and latency display
-- **Automatic server detection** - Identifies known servers (e.g., Google Web Server) and provides contextual details
-- **CIDR target expansion**
-- **Host discovery**
-- **Timing profiles**
-- **Legal disclaimer** - Promotes responsible and authorized use
+   - Multi-protocol scanning: TCP connect, SYN (raw), UDP
+   - Service/version detection for many common protocols
+   - Compact progress bars and msf-like colorized CLI output
+   - Configurable timeouts, concurrency, and a global SYN scan budget
+   - Cross-platform awareness (Windows Admin + Npcap guidance, WSL support)
 
-## Installation
+   Requirements
 
-### Prerequisites
-- Python 3.6+
-- For SYN scanning: root/admin privileges and `scapy` library
+   - Python 3.6+
+   - `scapy` (for SYN scanning)
 
-### Setup Steps
+   Install
 
-1. Clone or download the repository.
-
-2. Create a virtual environment (recommended):
    ```bash
-   # Linux/macOS
+   # Create and activate a virtualenv (recommended)
    python3 -m venv venv
    source venv/bin/activate
 
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
+   # Install dependencies
    pip install -r requirements.txt
    ```
 
-4. Make scripts executable (Linux/macOS):
+   Quick start
+
    ```bash
-   chmod +x reconshell.py
-   chmod +x scanner/*.py
-   chmod +x setup.sh
-   chmod +x start.sh
+   # Default TCP+UDP scan, ports 1-1000
+   python3 reconshell.py 192.168.1.10
+
+   # Common ports only
+   python3 reconshell.py www.google.com --common
+
+   # SYN scan (requires root/Administrator)
+   sudo python3 reconshell.py 192.168.1.10 --syn
+
+   # Narrow ports (fast)
+   python3 reconshell.py 10.0.0.1 -p 22,80,443 --syn
+
+   # Use WSL (example)
+   wsl bash -lc "cd /mnt/c/path/to/reconshell && sudo python3 reconshell.py 10.0.0.1 --syn"
    ```
 
-   Or run the setup script:
-   ```bash
-   ./setup.sh
-   ```
+   New/Important Flags
 
-### Windows Specific Notes
-- Use PowerShell for running scripts
-- For SYN scanning, run PowerShell as Administrator
-- Python executable might be `python` instead of `python3`
+   - `-p, --ports` : Port list (e.g., `22,80,443,1000-2000`). Default: `1-1000`.
+   - `--common` : Show common ports (open + closed) with known services.
+   - `--syn` : Run SYN (raw) scan in addition to TCP/UDP (requires elevated privileges and packet-capture driver on Windows).
+   - `-T, --timeout` : Per-probe timeout in seconds (default: `1.0`).
+   - `--max-duration` : Abort SYN scan after N seconds (prevents long runs; default: none).
+   - `-c, --concurrency` : Number of concurrent tasks for the TCP connect scanner (default: 200).
+   - `--details` : Fetch IP intelligence details (uses `ip-api.com`).
 
-## Usage
+   Output modes
 
-ReconShell automatically scans both TCP and UDP ports simultaneously with real-time progress bars. You can optionally enable SYN scanning for faster TCP results (requires root).
+   - Default: Minimal output — shows only open ports and a concise summary.
+   - `--common`: Lists both open and closed common ports (filters unknown services).
+   - `--syn`: Detailed SYN-style report that includes OS guess, per-port RTT (if available), method (syn/connect), service and version. By default the SYN detailed view filters out ports with unknown service names; you can adjust behavior in code.
 
-### Basic Scan (TCP + UDP by default, ports 1-1000)
-```bash
-python3 reconshell.py 192.168.1.10
-```
+   What's New (recent updates)
 
-### Quick Common Ports Scan
-```bash
-python3 reconshell.py www.google.com --common
-```
+   - SYN scan improvements
+      - Preflight checks for raw-socket/driver permissions (root on Linux, Administrator + Npcap on Windows).
+      - Batched Scapy sends to improve speed and reliability.
+      - Optional global `--max-duration` to abort long SYN runs.
 
-### Custom Ports
-```bash
-python3 reconshell.py 192.168.1.10 -p 22,80,443
-```
+   - UI and output
+      - msfconsole-style banner and colorized prefixes.
+      - Default open-only output; `--common` and `--syn` provide richer views.
 
-### SYN Scan (requires root, adds to TCP/UDP)
-```bash
-sudo python3 reconshell.py 192.168.1.10 --syn
-```
+   - Usability
+      - Quieted Scapy logging and clearer permission error messages.
+      - Faster default behavior for interactive use; tune with `-T` and `-p`.
 
-### With Details
-```bash
-python3 reconshell.py 192.168.1.10 --details
-```
+   Troubleshooting and platform notes
 
-## Options
+   - Windows
+      - For SYN scans, run PowerShell as Administrator and install Npcap (enable WinPcap compatibility).
+      - If you see a permission error, confirm Administrator rights and Npcap installation.
 
-- `target`: Target IP or hostname (positional argument)
-- `-p, --ports`: Ports (e.g., 22,80,443,1000-2000) (default: 1-1000)
-- `--common`: Scan only common ports (21,22,23,25,53,80,110,143,443,993,995,3306,3389)
-- `--syn`: Enable SYN scan (requires root; adds to default TCP/UDP)
-- `-c, --concurrency`: Concurrent tasks (default: 200)
-- `-T, --timeout`: Timeout in seconds (default: 0.2)
-- `--details`: Show detailed IP information
+   - WSL/Linux
+      - Run `sudo` inside WSL for raw socket access. Some WSL versions may limit raw socket capability — test and update WSL if needed.
 
-## Security Notes
+   - Performance
+      - To avoid very long runs, scan a smaller port range or reduce `-T` timeout during discovery. Example: `-p 1-500 -T 0.2`.
 
-- SYN scanning and raw packet sending require root.
-- Aggressive scans can trigger intrusion detection or block your IP.
-- Only scan hosts/networks you own or have explicit permission to test.
-- The tool includes a legal disclaimer to promote authorized use only.
+   Example workflows
 
-## Roadmap
+   - Quick discovery of likely services:
+      ```bash
+      python3 reconshell.py 10.0.27.78 -p 22,80,443
+      ```
 
-- Port ranges and host ranges (CIDR scanning)
-- Parallelism & rate-limiting
-- OS fingerprinting
-- Output formats (JSON, CSV)
-- Raw packet capture
-- Timing templates
-- Host up/down detection
+   - Full SYN-assisted scan (fast, requires privileges):
+      ```bash
+      sudo python3 reconshell.py 10.0.27.78 --syn -p 1-1000 --max-duration 30
+      ```
+
+   Contributing
+
+   PRs welcome. When contributing, keep changes focused, add tests where appropriate, and update the README for any user-facing changes.
+
+   License
+
+   Use this tool only on systems you own or are authorized to test. The repository does not grant permission to scan third-party networks.
