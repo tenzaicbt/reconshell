@@ -15,19 +15,12 @@ def parse_smtp_banner(banner):
     if not banner:
         return "SMTP"
     
-    # Common SMTP server patterns
     patterns = [
-        # Postfix with version: "220 hostname ESMTP Postfix 3.5.9"
         (r'ESMTP\s+Postfix\s+([\d.]+)', 'Postfix'),
-        # Postfix with parenthetical: "220 hostname ESMTP Postfix (Debian/GNU)"
         (r'ESMTP\s+Postfix\s*\(([^)]+)\)', 'Postfix'),
-        # Sendmail: "220 hostname ESMTP Sendmail 8.15.2/8.15.2"
-        (r'ESMTP\s+Sendmail\s+([\d.]+)', 'Sendmail'),
-        # Microsoft Exchange: "220 hostname Microsoft ESMTP MAIL Service, Version: 15.00.1497.036"
+        (r'ESMTP\s+Sendmail\s+([\d.]+)', 'Sendmail'), 
         (r'Microsoft\s+ESMTP\s+MAIL\s+Service.*?Version:\s*([\d.]+)', 'Exchange'),
-        # Exim: "220 hostname ESMTP Exim 4.94"
         (r'ESMTP\s+Exim\s+([\d.]+)', 'Exim'),
-        # Generic ESMTP with version
         (r'ESMTP\s+([A-Za-z]+)\s+([\d.]+)', None),
     ]
     
@@ -40,17 +33,14 @@ def parse_smtp_banner(banner):
                 service_name = match.group(1)
                 version = match.group(2)
             
-            # Try to extract year from version or banner
             year_match = re.search(r'\b(20\d{2})\b', banner)
             year = year_match.group(1) if year_match else ""
             
-            # If version looks like a year, don't include it again
             if year and year in version:
                 return f"{service_name} {version}"
             else:
                 return f"{service_name} {version}" + (f" ({year})" if year else "")
     
-    # Fallback: just return SMTP with any version-like string
     version_match = re.search(r'([\d]+\.[\d]+(?:\.[\d]+)*)', banner)
     if version_match:
         year_match = re.search(r'\b(20\d{2})\b', banner)
@@ -78,7 +68,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             for line in response.split('\n'):
                 if line.lower().startswith('server:'):
                     server_header = line.split(':', 1)[1].strip()
-                    # Parse server header for version
                     return parse_http_server(server_header)
             return 'HTTP'
         elif port == 22:
@@ -118,7 +107,7 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_smtp_banner(banner)
         elif port == 53:
-            # DNS - basic
+            # DNS
             return 'DNS'
         elif port == 110:
             # POP3
@@ -181,11 +170,10 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_mysql_banner(banner)
         elif port == 5432:
-            # PostgreSQL
+
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
-            # Send SSL request or startup message
             s.send(b'\x00\x00\x00\x08\x04\xd2\x16\x2f')
             data = s.recv(1024)
             s.close()
@@ -196,7 +184,7 @@ def grab_version_tcp(host, port, timeout=1.0):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
-            # RDP connection request
+            # RDP connection
             s.send(b'\x03\x00\x00\x13\x0e\xd0\x00\x00\x124\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00')
             data = s.recv(1024)
             s.close()
@@ -212,7 +200,7 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_vnc_banner(banner)
         else:
-            # Generic banner grab with parsing
+
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -220,7 +208,7 @@ def grab_version_tcp(host, port, timeout=1.0):
             data = s.recv(1024)
             s.close()
             banner = data.decode(errors='ignore').strip()
-            # Try to get service name from socket
+
             try:
                 service_name = socket.getservbyport(port, 'tcp')
             except:
@@ -236,11 +224,11 @@ def parse_http_server(server_header):
     if not server_header:
         return "HTTP"
     
-    # Special case for Google Web Server
+
     if server_header.lower() == 'gws':
         return "gws (Google Web Server)"
     
-    # Common patterns
+
     patterns = [
         r'Apache/([\d.]+)',
         r'nginx/([\d.]+)',
@@ -267,7 +255,6 @@ def parse_ftp_banner(banner):
     if not banner:
         return "FTP"
     
-    # Common FTP servers
     if "FileZilla" in banner:
         match = re.search(r'FileZilla\s+Server\s+([\d.]+)', banner, re.IGNORECASE)
         if match:
@@ -290,7 +277,6 @@ def parse_pop3_banner(banner):
     if not banner:
         return "POP3"
     
-    # Look for version info
     version_match = re.search(r'([\d]+\.[\d]+(?:\.[\d]+)*)', banner)
     if version_match:
         return f"POP3 {version_match.group(1)}"
@@ -304,7 +290,6 @@ def parse_generic_banner(banner, service_name):
     if not banner:
         return service_name
     
-    # Look for version patterns
     version_patterns = [
         r'([A-Za-z]+)[/-]([\d]+\.[\d]+(?:\.[\d]+)*)',  # Service/version or Service-version
         r'([A-Za-z]+)\s+([\d]+\.[\d]+(?:\.[\d]+)*)',  # Service version
@@ -318,11 +303,9 @@ def parse_generic_banner(banner, service_name):
         if match:
             if len(match.groups()) == 1:
                 version = match.group(1)
-                # For single group patterns, try to extract service name from banner
                 service_match = re.search(r'([A-Za-z]+)(?=[/-]|\s+[\d])', banner)
                 if service_match and service_match.group(1).lower() != service_name.lower():
                     detected_service = service_match.group(1)
-                    # Skip common words
                     if detected_service.lower() not in ['the', 'and', 'for', 'with', 'from', 'server', 'service']:
                         service_name = detected_service
             else:
@@ -335,7 +318,6 @@ def parse_generic_banner(banner, service_name):
             year = year_match.group(1) if year_match else ""
             return f"{service_name} {version}" + (f" ({year})" if year else "")
     
-    # If no version found, return the service name
     return service_name
 
 def parse_telnet_banner(banner):
@@ -347,7 +329,6 @@ def parse_mysql_banner(banner):
     if not banner:
         return "MySQL"
     
-    # MySQL typically responds with version in handshake
     match = re.search(r'([\d]+\.[\d]+(?:\.[\d]+)*)', banner)
     if match:
         return f"MySQL {match.group(1)}"
@@ -388,7 +369,6 @@ def parse_ftp_banner(banner):
     if not banner:
         return "FTP"
     
-    # Common FTP servers
     patterns = [
         (r'FileZilla\s+Server\s+([\d.]+)', 'FileZilla'),
         (r'vsftpd\s+([\d.]+)', 'vsftpd'),
@@ -426,7 +406,6 @@ def parse_pop3_banner(banner):
     if not banner:
         return "POP3"
     
-    # Common POP3 servers
     if "Dovecot" in banner:
         match = re.search(r'Dovecot\s+([\w.]+)', banner, re.IGNORECASE)
         if match:
@@ -441,7 +420,6 @@ def parse_imap_banner(banner):
     if not banner:
         return "IMAP"
     
-    # Common IMAP servers
     if "Dovecot" in banner:
         match = re.search(r'Dovecot\s+([\w.]+)', banner, re.IGNORECASE)
         if match:
@@ -463,7 +441,7 @@ async def grab_version_async(host, port, timeout=1.0):
                     server = resp.headers.get('Server', 'HTTP')
                     return server
         else:
-            # Fallback to sync for now
+
             return grab_version_tcp(host, port, timeout)
     except:
         return None
@@ -488,7 +466,7 @@ def grab_version_udp(host, port, timeout=2.0):
             # NTP
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(timeout)
-            # NTP version 3 request
+            # NTP version 3 
             s.sendto(b'\x1b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', (host, port))
             data, _ = s.recvfrom(1024)
             s.close()
@@ -501,7 +479,7 @@ def grab_version_udp(host, port, timeout=2.0):
             if HAS_PYSNMP:
                 # Basic SNMP get
                 community = 'public'
-                oid = '1.3.6.1.2.1.1.1.0'  # sysDescr
+                oid = '1.3.6.1.2.1.1.1.0' 
                 iterator = getCmd(SnmpEngine(),
                                   CommunityData(community),
                                   UdpTransportTarget((host, port), timeout=int(timeout*100), retries=0),
@@ -518,16 +496,16 @@ def grab_version_udp(host, port, timeout=2.0):
                         return parse_generic_banner(sysdescr, 'SNMP')
             return 'SNMP'
         elif port == 137:
-            # NetBIOS Name Service
+
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(timeout)
-            # NetBIOS name query
+
             s.sendto(b'\x82\x28\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x20\x43\x4b\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x41\x00\x00\x21\x00\x01', (host, port))
             data, _ = s.recvfrom(1024)
             s.close()
             return parse_generic_banner(data.decode(errors='ignore').strip(), 'NetBIOS')
         else:
-            # Generic UDP probe with parsing
+
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(timeout)
             s.sendto(b'\x00', (host, port))

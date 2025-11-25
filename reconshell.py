@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 reconshell.py
 Master launcher for ReconShell - Advanced Port Scanner.
@@ -17,7 +17,6 @@ import os
 import contextlib
 import gc
 
-# ANSI color codes
 RED = '\033[91m'
 GREEN = '\033[92m'
 YELLOW = '\033[93m'
@@ -33,10 +32,9 @@ GOOD_PREFIX = f"{GREEN}[+]{ENDC}"
 WARN_PREFIX = f"{YELLOW}[!]{ENDC}"
 BAD_PREFIX = f"{RED}[-]{ENDC}"
 
-# Add scanner to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scanner'))
 import logging
-# Reduce scapy/logging noise (hide non-fatal warnings)
+
 logging.getLogger('scapy.runtime').setLevel(logging.ERROR)
 logging.getLogger('scapy').setLevel(logging.ERROR)
 
@@ -53,7 +51,7 @@ import requests
 class ReconArgumentParser(argparse.ArgumentParser):
     """Custom parser that prints colorful error messages."""
 
-    def error(self, message):  # pragma: no cover - CLI UX hook
+    def error(self, message): 
         sys.stderr.write(f"\n{RED}Argument Error:{ENDC} {message}\n\n")
         self.print_help(sys.stderr)
         sys.stderr.write('\n')
@@ -137,7 +135,6 @@ def run_tcp_scan(args):
 
 def run_syn_scan(args):
     ports = parse_ports(args.ports)
-    # Run the SYN scan while suppressing noisy scapy stderr/stdout output
     syn_results = []
     os_info = "Unknown"
     had_perm_error = False
@@ -165,7 +162,6 @@ def run_syn_scan(args):
                 had_other_error = True
                 err_msg = str(e)
             finally:
-                # force cleanup while stderr still redirected to avoid finalizer tracebacks
                 try:
                     gc.collect()
                 except Exception:
@@ -229,7 +225,6 @@ def add_versions(results, args):
                 r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
-    # If user requested detailed SYN view, print exhaustive details
     if getattr(args, 'syn', False):
         host_line = host_status.title() if isinstance(host_status, str) else host_status
         print(f"{INFO_PREFIX} Target Information")
@@ -244,12 +239,10 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
 
         print(f"\n{INFO_PREFIX} SYN Scan Details")
         print(f"{INFO_PREFIX} OS Guess: {os_info}")
-        # Detailed header
         header = f"{'PORT':<8}{'PROTO':<8}{'METHOD':<10}{'STATE':<10}{'SERVICE':<18}{'RTT(ms)':<10}{'VERSION'}"
         print(f"    {header}")
         print(f"    {'-' * len(header)}")
 
-        # show SYN-related entries but skip ports with unknown service names
         detailed = []
         for r in results:
             port = r.get('port')
@@ -276,13 +269,11 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             port_display = f"{port}/{proto}"
             print(f"    {str(port_display):<8}{proto:<8}{method:<10}{state:<10}{service:<18}{rtt_s:<10}{version}")
 
-        # Summary
         open_count = len([r for r in results if r.get('status') == 'open'])
         print(f"\n{GOOD_PREFIX} Total Open Ports: {open_count}")
         print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
         return
 
-    # If user requested --common, show both open and closed ports (exclude unknown services)
     if getattr(args, 'common', False):
         def format_state_label(s: str) -> str:
             raw = (s or 'unknown').upper()
@@ -309,7 +300,6 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             service = r.get('service') or get_service_name(port, proto)
             version = r.get('version', '') or ''
             port_display = f"{port}/{proto}"
-            # ensure spacing so color codes don't break alignment
             print(f"    {port_display:<12} {state:<12} {service:<18} {version}")
 
         total = len(filtered)
@@ -317,7 +307,6 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
         return
 
-    # Minimal output: show only open ports
     open_ports = [r for r in results if r.get('status') == 'open']
 
     print(f"{INFO_PREFIX} Open Ports for {args.target}")
@@ -326,7 +315,6 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
         return
 
-    # Header
     header = f"{'PORT':<12}{'PROTO':<8}{'SERVICE':<18}{'VERSION'}"
     print(f"    {header}")
     print(f"    {'-' * len(header)}")
@@ -347,7 +335,6 @@ def main():
     parser = get_parser(parser_cls=ReconArgumentParser)
     args = parser.parse_args()
 
-    # Handle --common option
     if args.common:
         args.ports = "21,22,23,25,53,80,110,143,443,993,995,3306,3389"
 
@@ -359,7 +346,6 @@ def main():
     os_info = "Unknown"
     ip_details = get_ip_details(args.target) if args.details else {}
 
-    # Run scans sequentially
     tcp_results = run_tcp_scan(args)
     udp_results = run_udp_scan(args)
     if args.syn:
@@ -369,7 +355,6 @@ def main():
 
     all_results = tcp_results + syn_results + udp_results
 
-    # Deduplicate results by (port, protocol)
     merged_results = {}
     for r in all_results:
         key = (r['port'], r.get('protocol', 'tcp'))
@@ -377,13 +362,10 @@ def main():
             merged_results[key] = r.copy()
         else:
             existing = merged_results[key]
-            # Prefer open status
             if r.get('status') == 'open' and existing.get('status') != 'open':
                 existing['status'] = 'open'
-            # Merge version if available
             if r.get('version') and not existing.get('version'):
                 existing['version'] = r['version']
-            # Merge service if available
             if r.get('service') and not existing.get('service'):
                 existing['service'] = r['service']
 

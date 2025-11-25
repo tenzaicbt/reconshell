@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 tcp_scan.py
 Asyncio TCP connect scanner with optional banner grabbing.
@@ -14,7 +14,7 @@ async def probe_port(semaphore, host, port, timeout, banner):
     async with semaphore:
         try:
             reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port, limit=2**16), timeout=timeout)
-            # connected -> port open
+
             info = {'port': port, 'status': 'open', 'protocol': 'tcp', 'banner': None}
             if banner:
                 try:

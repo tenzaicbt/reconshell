@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 udp_scan.py
 Basic UDP probe: send empty UDP packet and wait for ICMP port unreachable.
@@ -10,14 +10,11 @@ import socket
 import select
 
 def get_payload(port):
-    if port == 53:  # DNS
-        # Simple DNS query
+    if port == 53:
         return b'\x00\x01\x01\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x01'
-    elif port == 123:  # NTP
-        # NTP version 3 client request
+    elif port == 123: 
         return b'\x1b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-    elif port == 161:  # SNMP
-        # SNMP get request for sysDescr
+    elif port == 161:
         return b'\x30\x26\x02\x01\x00\x04\x06\x70\x75\x62\x6c\x69\x63\xa0\x19\x02\x01\x01\x02\x01\x00\x02\x01\x00\x30\x0e\x30\x0c\x06\x08\x2b\x06\x01\x02\x01\x01\x01\x00\x05\x00'
     else:
         return b'\x00'
@@ -28,14 +25,11 @@ def udp_probe(host, port, timeout=2.0):
     try:
         payload = get_payload(port)
         s.sendto(payload, (host, port))
-        # try to read something (some services reply)
         data, addr = s.recvfrom(2048)
         return 'open', data.decode(errors='ignore').strip()
     except socket.timeout:
-        # no response — could be open|filtered
         return 'no-response', None
     except ConnectionRefusedError:
-        # ICMP port unreachable => closed
         return 'closed', None
     except Exception as e:
         return f'err:{e}', None

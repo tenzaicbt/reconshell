@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+
 """
 syn_scan.py
 SYN scanner using scapy. Requires root.
@@ -17,13 +17,12 @@ from scapy.error import Scapy_Exception
 from .progress import ProgressBar
 
 try:
-    from .banner import grab_version_tcp  # type: ignore
-except ImportError:  # pragma: no cover - direct script execution fallback
+    from .banner import grab_version_tcp
+except ImportError: 
     from banner import grab_version_tcp
 
-conf.verb = 0  # scapy quiet
+conf.verb = 0 
 
-# Ensure pcap is used on Windows so sr/sr1 work reliably with Npcap
 if os.name == 'nt' and hasattr(conf, 'use_pcap'):
     conf.use_pcap = True
 
@@ -42,7 +41,7 @@ def _is_windows_admin() -> bool:
 def _check_raw_socket_access() -> Optional[Exception]:
     try:
         test_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-    except OSError as exc:  # pragma: no cover - platform dependent
+    except OSError as exc:
         if os.name == 'nt':
             winerror = getattr(exc, 'winerror', None)
             if winerror == 10013 or exc.errno in (errno.EPERM, errno.EACCES):
@@ -68,12 +67,11 @@ def check_syn_requirements() -> Optional[Exception]:
             )
         return _check_raw_socket_access()
 
-    if hasattr(os, 'geteuid') and os.geteuid() != 0:  # pragma: no cover - requires root to hit else path
+    if hasattr(os, 'geteuid') and os.geteuid() != 0:
         return PermissionError("SYN scan requires root privileges (try running with sudo).")
 
     return _check_raw_socket_access()
 
-# use shared ProgressBar from scanner.progress
 
 def get_service_name(port: int) -> str:
     try:
@@ -140,7 +138,7 @@ def scan_syn(
 
         try:
             answered, _ = sr(packets, timeout=timeout, verbose=False)
-        except Scapy_Exception as exc:  # pragma: no cover - depends on platform setup
+        except Scapy_Exception as exc: 
             message = str(exc).strip() or "Scapy failed during SYN scan."
             lowered = message.lower()
             if any(token in lowered for token in ("permission", "npcap", "winpcap", "raw socket")):
@@ -202,7 +200,7 @@ def scan_syn(
                 if vbar:
                     vbar.close()
                 raise TimeoutError(f"SYN scan exceeded max duration ({max_duration:.1f}s)")
-            port = entry['port']  # type: ignore[index]
+            port = entry['port'] 
             version = grab_version_tcp(target, port, timeout=timeout)
             entry['version'] = version or ''
             if vbar:
@@ -270,7 +268,7 @@ def main():
         print(header)
         print('-' * len(header))
         for entry in results:
-            port_str = f"{entry['port']}/tcp"  # type: ignore[index]
+            port_str = f"{entry['port']}/tcp" 
             state = str(entry.get('state', 'unknown')).upper()
             service = entry.get('service') or 'unknown'
             version = entry.get('version') or ''

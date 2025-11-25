@@ -14,7 +14,7 @@ class ProgressBar:
     - Human readable percent and counts
     """
     SPINNER = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    # protocol icons removed per user request; keep mapping for compatibility
+
     PROT_ICON = {'tcp': '', 'udp': '', 'syn': '', '': ''}
 
     def __init__(self, total: int, desc: str = "", width: int = 12, protocol: str = ""):
@@ -38,7 +38,7 @@ class ProgressBar:
         self._spin += 1
         icon = ProgressBar.PROT_ICON.get(self.protocol, '')
         counts = f"{self.current}/{self.total}"
-        # only include icon slot when non-empty to avoid extra spaces
+
         if icon:
             out = f"\r{spinner} {icon} {self.desc}: [{bar}] {pct:3d}% {counts}"
         else:
