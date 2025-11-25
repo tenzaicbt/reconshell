@@ -229,6 +229,45 @@ def add_versions(results, args):
                 r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
+    # If user requested detailed SYN view, print exhaustive details
+    if getattr(args, 'syn', False):
+        host_line = host_status.title() if isinstance(host_status, str) else host_status
+        print(f"{INFO_PREFIX} Target Information")
+        print(f"    {'IP Address':<14}: {target_info.get('ip', 'N/A')}")
+        print(f"    {'Hostname':<14}: {target_info.get('hostname', 'N/A')}")
+        print(f"    {'Host Status':<14}: {host_line}")
+        print(f"    {'Latency':<14}: {latency}")
+        if ip_details:
+            print(f"\n{INFO_PREFIX} IP Details")
+            for k, v in ip_details.items():
+                print(f"    {k:<14}: {v}")
+
+        print(f"\n{INFO_PREFIX} SYN Scan Details")
+        print(f"{INFO_PREFIX} OS Guess: {os_info}")
+        # Detailed header
+        header = f"{'PORT':<8}{'PROTO':<8}{'METHOD':<10}{'STATE':<10}{'SERVICE':<18}{'RTT(ms)':<10}{'VERSION'}"
+        print(f"    {header}")
+        print(f"    {'-' * len(header)}")
+
+        # show all entries produced by scans (prefer merged values)
+        for r in sorted(results, key=lambda x: (x.get('port', 0), x.get('protocol', 'tcp'))):
+            port = r.get('port')
+            proto = r.get('protocol', 'tcp')
+            method = r.get('method', 'connect')
+            state = (r.get('status') or 'unknown').upper()
+            service = r.get('service') or get_service_name(port, proto)
+            rtt = r.get('rtt_ms')
+            rtt_s = f"{rtt:.2f}" if isinstance(rtt, (int, float)) else ('-' if rtt is None else str(rtt))
+            version = r.get('version', '') or ''
+            port_display = f"{port}/{proto}"
+            print(f"    {str(port_display):<8}{proto:<8}{method:<10}{state:<10}{service:<18}{rtt_s:<10}{version}")
+
+        # Summary
+        open_count = len([r for r in results if r.get('status') == 'open'])
+        print(f"\n{GOOD_PREFIX} Total Open Ports: {open_count}")
+        print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
+        return
+
     # If user requested --common, show both open and closed ports (exclude unknown services)
     if getattr(args, 'common', False):
         def format_state_label(s: str) -> str:
