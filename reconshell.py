@@ -229,69 +229,30 @@ def add_versions(results, args):
                 r['version'] = grab_version_udp(args.target, r['port'], args.timeout)
 
 def output_results(results, args, os_info="Unknown", ip_details={}, target_info={}, host_status='unknown', latency='N/A', scan_time=0):
-    def format_state(state: str, width: int = 12) -> str:
-        raw = (state or 'unknown').upper()
-        if raw == 'OPEN':
-            colored = f"{GREEN}{raw}{ENDC}"
-        elif raw == 'CLOSED':
-            colored = f"{RED}{raw}{ENDC}"
-        elif raw in ('FILTERED', 'NO-RESPONSE'):
-            colored = f"{YELLOW}{raw}{ENDC}"
-        else:
-            colored = f"{BLUE}{raw}{ENDC}"
-        padding = max(width - len(raw), 1)
-        return f"{colored}{' ' * padding}"
+    # Minimal output: show only open ports
+    open_ports = [r for r in results if r.get('status') == 'open']
 
-    filtered_results = [r for r in results if r.get('status') in ('open', 'closed')]
+    print(f"{INFO_PREFIX} Open Ports for {args.target}")
+    if not open_ports:
+        print(f"{WARN_PREFIX} No open ports found")
+        print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
+        return
 
-    def fmt_detail(label: str, value: str) -> str:
-        return f"    {label:<14}: {value}"
-
-    host_line = host_status.title() if isinstance(host_status, str) else host_status
-    print(f"{INFO_PREFIX} Target Information")
-    print(fmt_detail("IP Address", target_info.get('ip', 'N/A')))
-    print(fmt_detail("Hostname", target_info.get('hostname', 'N/A')))
-    print(fmt_detail("Host Status", host_line))
-    print(fmt_detail("Latency", latency))
-
-    header = f"{'PORT':<12}{'STATE':<12}{'SERVICE':<18}{'VERSION'}"
-    print(f"\n{INFO_PREFIX} Scan Results for {args.target}")
+    # Header
+    header = f"{'PORT':<12}{'PROTO':<8}{'SERVICE':<18}{'VERSION'}"
     print(f"    {header}")
     print(f"    {'-' * len(header)}")
 
-    for item in sorted(filtered_results, key=lambda x: (x['port'], x.get('protocol', 'tcp'))):
-        r = item
+    for r in sorted(open_ports, key=lambda x: x['port']):
         port = r['port']
-        protocol = r.get('protocol', 'tcp')
-        state_display = format_state(r.get('status', 'unknown'))
-        service = r.get('service') or get_service_name(port, protocol)
+        proto = r.get('protocol', 'tcp')
+        service = r.get('service') or get_service_name(port, proto)
         version = r.get('version', '') or ''
-        port_display = f"{port}/{protocol}"
-        print(f"    {port_display:<12} {state_display}{service:<18} {version}")
+        port_display = f"{port}/{proto}"
+        print(f"    {port_display:<12}{proto:<8}{service:<18}{version}")
 
-    open_count = len([r for r in filtered_results if r.get('status') == 'open'])
-    print(f"\n{GOOD_PREFIX} Total Open Ports : {open_count}")
-    print(f"{INFO_PREFIX} Scan Duration    : {scan_time:.2f}s")
-    print(f"{INFO_PREFIX} OS Guess         : {os_info}")
-
-    if ip_details:
-        print(f"\n{INFO_PREFIX} IP Intelligence")
-        for k, v in ip_details.items():
-            print(fmt_detail(k, v))
-
-    detected_servers = set()
-    for r in results:
-        version = (r.get('version') or '').lower()
-        if 'gws' in version:
-            detected_servers.add('Google Web Server (GWS)')
-
-    if detected_servers:
-        print(f"\n{GOOD_PREFIX} Detected Servers")
-        for server in sorted(detected_servers):
-            if 'Google Web Server' in server:
-                print("    Google Web Server (GWS): Google's proprietary web server platform (details intentionally undisclosed).")
-            else:
-                print(f"    {server}")
+    print(f"\n{GOOD_PREFIX} Total Open Ports: {len(open_ports)}")
+    print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
 
 def main():
     print_banner()
