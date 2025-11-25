@@ -249,8 +249,22 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         print(f"    {header}")
         print(f"    {'-' * len(header)}")
 
-        # show all entries produced by scans (prefer merged values)
-        for r in sorted(results, key=lambda x: (x.get('port', 0), x.get('protocol', 'tcp'))):
+        # show SYN-related entries but skip ports with unknown service names
+        detailed = []
+        for r in results:
+            port = r.get('port')
+            proto = r.get('protocol', 'tcp')
+            service = r.get('service') or get_service_name(port, proto)
+            if service == 'unknown':
+                continue
+            detailed.append(r)
+
+        if not detailed:
+            print(f"{WARN_PREFIX} No SYN/TCP entries with known services to display")
+            print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
+            return
+
+        for r in sorted(detailed, key=lambda x: (x.get('port', 0), x.get('protocol', 'tcp'))):
             port = r.get('port')
             proto = r.get('protocol', 'tcp')
             method = r.get('method', 'connect')
