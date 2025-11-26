@@ -55,7 +55,6 @@ def grab_version_tcp(host, port, timeout=1.0):
     """
     try:
         if port in [80, 443]:
-            # HTTP/HTTPS
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
@@ -71,7 +70,6 @@ def grab_version_tcp(host, port, timeout=1.0):
                     return parse_http_server(server_header)
             return 'HTTP'
         elif port == 22:
-            # SSH
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -80,7 +78,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_ssh_banner(banner)
         elif port == 21:
-            # FTP
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -89,7 +86,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_ftp_banner(banner)
         elif port == 23:
-            # Telnet
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -98,7 +94,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_telnet_banner(banner)
         elif port == 25:
-            # SMTP
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -107,10 +102,8 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_smtp_banner(banner)
         elif port == 53:
-            # DNS
             return 'DNS'
         elif port == 110:
-            # POP3
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -119,7 +112,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_pop3_banner(banner)
         elif port == 143:
-            # IMAP
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -128,18 +120,15 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_imap_banner(banner)
         elif port == 445:
-            # SMB
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
-            # SMB negotiation
             s.send(b'\x00\x00\x00\x85\xff\x53\x4d\x42\x72\x00\x00\x00\x00\x18\x53\xc8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xfe\x00\x00\x00\x00\x00\x6d\x00\x02\x50\x43\x20\x4e\x45\x54\x57\x4f\x52\x4b\x20\x50\x52\x4f\x47\x52\x41\x4d\x20\x31\x2e\x30\x00\x02\x4d\x49\x43\x52\x4f\x53\x4f\x46\x54\x20\x4e\x45\x54\x57\x4f\x52\x4b\x53\x20\x31\x2e\x30\x33\x00\x02\x4d\x49\x43\x52\x4f\x53\x4f\x46\x54\x20\x4e\x45\x54\x57\x4f\x52\x4b\x53\x20\x33\x2e\x30\x00')
             data = s.recv(1024)
             s.close()
             banner = data.decode(errors='ignore').strip()
             return parse_smb_banner(banner)
         elif port == 993:
-            # IMAPS
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
@@ -150,7 +139,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_imap_banner(banner)
         elif port == 995:
-            # POP3S
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
@@ -161,7 +149,6 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_pop3_banner(banner)
         elif port == 3306:
-            # MySQL
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -180,18 +167,15 @@ def grab_version_tcp(host, port, timeout=1.0):
             banner = data.decode(errors='ignore').strip()
             return parse_postgres_banner(banner)
         elif port == 3389:
-            # RDP
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
-            # RDP connection
             s.send(b'\x03\x00\x00\x13\x0e\xd0\x00\x00\x124\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00')
             data = s.recv(1024)
             s.close()
             banner = data.decode(errors='ignore').strip()
             return parse_rdp_banner(banner)
         elif port == 5900:
-            # VNC
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(timeout)
             s.connect((host, port))
@@ -433,7 +417,6 @@ async def grab_version_async(host, port, timeout=1.0):
     """
     try:
         if port in [80, 443]:
-            # HTTP/HTTPS
             import aiohttp
             async with aiohttp.ClientSession() as session:
                 url = f'http{"s" if port == 443 else ""}://{host}'
@@ -452,7 +435,6 @@ def grab_version_udp(host, port, timeout=2.0):
     """
     try:
         if port == 53:
-            # DNS
             import dns.query
             import dns.message
             query = dns.message.make_query('version.bind', dns.rdns.TXT)
@@ -463,10 +445,8 @@ def grab_version_udp(host, port, timeout=2.0):
                     return parse_generic_banner(version_info, 'DNS')
             return 'DNS'
         elif port == 123:
-            # NTP
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.settimeout(timeout)
-            # NTP version 3 
             s.sendto(b'\x1b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00', (host, port))
             data, _ = s.recvfrom(1024)
             s.close()
@@ -475,9 +455,7 @@ def grab_version_udp(host, port, timeout=2.0):
                 return f'NTP v{version}'
             return 'NTP'
         elif port == 161:
-            # SNMP
             if HAS_PYSNMP:
-                # Basic SNMP get
                 community = 'public'
                 oid = '1.3.6.1.2.1.1.1.0' 
                 iterator = getCmd(SnmpEngine(),

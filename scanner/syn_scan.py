@@ -84,7 +84,6 @@ def detect_os(resp):
         return "Unknown"
     ttl = resp[IP].ttl
     window = resp[TCP].window if resp.haslayer(TCP) else 0
-    # Simple OS fingerprinting based on TTL and window size
     if ttl == 64:
         if window == 5840:
             return "Linux"
