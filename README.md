@@ -9,7 +9,9 @@
       | | \ \  __/ (_| (_) | | | |    ____) | | | |  __/ | |
       |_|  \_\___|\___\___/|_| |_|____|____/|_| |_|\___|_|_|
 
-   ReconShell is a compact, extensible port-scanning toolkit inspired by tools like nmap. It provides multiple scanning modes (TCP connect, SYN, UDP), service/version detection, and a compact CLI UI with msfconsole-style visual cues.
+ReconShell is a compact, extensible port-scanning toolkit inspired by tools like nmap.
+It provides multiple scanning modes (TCP connect, SYN, UDP), service/version detection
+and a compact CLI UI with msfconsole-style visual cues.
 
    Highlights
 
