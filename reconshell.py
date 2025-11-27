@@ -239,7 +239,8 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
 
         print(f"\n{INFO_PREFIX} SYN Scan Details")
         print(f"{INFO_PREFIX} OS Guess: {os_info}")
-        header = f"{'PORT':<8}{'PROTO':<8}{'METHOD':<10}{'STATE':<10}{'SERVICE':<18}{'RTT(ms)':<10}{'VERSION'}"
+        # Detailed header (removed RTT column, increased spacing for readability)
+        header = f"{'PORT':<10} {'PROTO':<8} {'METHOD':<10} {'STATE':<10} {'SERVICE':<24} {'VERSION'}"
         print(f"    {header}")
         print(f"    {'-' * len(header)}")
 
@@ -263,11 +264,9 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             method = r.get('method', 'connect')
             state = (r.get('status') or 'unknown').upper()
             service = r.get('service') or get_service_name(port, proto)
-            rtt = r.get('rtt_ms')
-            rtt_s = f"{rtt:.2f}" if isinstance(rtt, (int, float)) else ('-' if rtt is None else str(rtt))
             version = r.get('version', '') or ''
             port_display = f"{port}/{proto}"
-            print(f"    {str(port_display):<8}{proto:<8}{method:<10}{state:<10}{service:<18}{rtt_s:<10}{version}")
+            print(f"    {str(port_display):<10} {proto:<8} {method:<10} {state:<10} {service:<24} {version}")
 
         open_count = len([r for r in results if r.get('status') == 'open'])
         print(f"\n{GOOD_PREFIX} Total Open Ports: {open_count}")
@@ -290,7 +289,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
             return
 
-        header = f"{'PORT':<12}{'STATE':<12}{'SERVICE':<18}{'VERSION'}"
+        header = f"{'PORT':<12} {'STATE':<12} {'SERVICE':<24} {'VERSION'}"
         print(f"    {header}")
         print(f"    {'-' * len(header)}")
         for r in sorted(filtered, key=lambda x: x['port']):
@@ -300,7 +299,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
             service = r.get('service') or get_service_name(port, proto)
             version = r.get('version', '') or ''
             port_display = f"{port}/{proto}"
-            print(f"    {port_display:<12} {state:<12} {service:<18} {version}")
+            print(f"    {port_display:<12} {state:<12} {service:<24} {version}")
 
         total = len(filtered)
         print(f"\n{GOOD_PREFIX} Total (open/closed): {total}")
@@ -315,7 +314,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
         return
 
-    header = f"{'PORT':<12}{'PROTO':<8}{'SERVICE':<18}{'VERSION'}"
+    header = f"{'PORT':<12} {'PROTO':<8} {'SERVICE':<24} {'VERSION'}"
     print(f"    {header}")
     print(f"    {'-' * len(header)}")
 
@@ -325,7 +324,7 @@ def output_results(results, args, os_info="Unknown", ip_details={}, target_info=
         service = r.get('service') or get_service_name(port, proto)
         version = r.get('version', '') or ''
         port_display = f"{port}/{proto}"
-        print(f"    {port_display:<12}{proto:<8}{service:<18}{version}")
+        print(f"    {port_display:<12} {proto:<8} {service:<24} {version}")
 
     print(f"\n{GOOD_PREFIX} Total Open Ports: {len(open_ports)}")
     print(f"{INFO_PREFIX} Scan Duration: {scan_time:.2f}s")
