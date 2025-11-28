@@ -37,6 +37,16 @@ and a compact CLI UI with msfconsole-style visual cues.
    pip install -r requirements.txt
    ```
 
+   Linux Dependencies
+
+   On Linux distributions, you may need to install system packages for scapy to work properly:
+
+   - Ubuntu/Debian: `sudo apt update && sudo apt install libpcap-dev python3-dev`
+   - CentOS/RHEL: `sudo yum install libpcap-devel python3-devel` or `sudo dnf install libpcap-devel python3-devel`
+   - Arch: `sudo pacman -S libpcap`
+
+   After installing system dependencies, install Python packages as above.
+
    Quick start
 
    ```bash
@@ -94,7 +104,13 @@ and a compact CLI UI with msfconsole-style visual cues.
       - If you see a permission error, confirm Administrator rights and Npcap installation.
 
    - WSL/Linux
+      - Ensure system dependencies are installed (see Linux Dependencies above).
       - Run `sudo` inside WSL for raw socket access. Some WSL versions may limit raw socket capability — test and update WSL if needed.
+      - If scapy fails to import or send packets, check that libpcap is installed and accessible.
+
+   - General
+      - If Python 3 is not available, install it (e.g., `sudo apt install python3 python3-pip` on Ubuntu).
+      - For SYN scans, ensure you have root/admin privileges.
 
    - Performance
       - To avoid very long runs, scan a smaller port range or reduce `-T` timeout during discovery. Example: `-p 1-500 -T 0.2`.

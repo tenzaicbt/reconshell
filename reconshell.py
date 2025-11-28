@@ -1,4 +1,6 @@
 
+#!/usr/bin/env python3
+
 """
 reconshell.py
 Master launcher for ReconShell - Advanced Port Scanner.
